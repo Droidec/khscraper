@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2021, GIANNETTI Marc
+# Copyright (c) 2019-2021, Droidec (Marc G.)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification,
