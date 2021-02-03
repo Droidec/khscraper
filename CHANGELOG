@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+Version 1.1.0
+-------------
+- Add a number column to the summary table
+- Change progressbar widgets
+- Total time elapsed is now displayed at the end
+
 Version 1.0.0
 -------------
 - First release

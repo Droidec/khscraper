@@ -30,6 +30,7 @@ import re
 import os
 import sys
 import argparse
+import datetime
 import urllib.parse
 import urllib.request
 import progressbar # progressbar2 package (Progress bar display)
@@ -71,6 +72,13 @@ def query_yes_no(question, default='yes'):
         elif choice in valid:
             return valid[choice]
 
+def strfdelta(tdelta, fmt):
+    """Format a datetime.timedelta object"""
+    d = {"days": tdelta.days}
+    d["hours"], rem = divmod(tdelta.seconds, 3600)
+    d["min"], d["sec"] = divmod(rem, 60)
+    return fmt.format(**d)
+
 class Song(object):
     """Song class
 
@@ -99,27 +107,33 @@ class Song(object):
         return tag.parent.get('href')
 
     def __show_progress(self, count, block_size, total_size):
+        """Callback function to update progressbar"""
         if self.pbar is None:
-            self.pbar = progressbar.ProgressBar(maxval=total_size)
+            self.pbar = progressbar.DataTransferBar(max_value=total_size)
 
         downloaded = count * block_size
         if downloaded < total_size:
             self.pbar.update(downloaded)
         else:
             self.pbar.finish()
-            self.pbar = None
 
-    def get_info(self):
+    def get_info(self, number):
         """Return song informations as a list"""
-        return [self.name, self.duration, self.size]
+        return [number, self.name, self.duration, self.size]
 
     def download(self, path, verbosity=False):
-        """Download song"""
+        """Download song and return the time elapsed"""
         link = self.__get_download_link_from_url(self.url)
         if verbosity:
             print("Link found: " + link)
         file = os.path.basename(urllib.parse.unquote(link))
         urllib.request.urlretrieve(link, os.path.join(path, file), reporthook=self.__show_progress)
+        time_elapsed = self.pbar.data()['time_elapsed']
+
+        # Reset progress bar
+        self.pbar = None
+
+        return time_elapsed
 
 class Scraper(object):
     """Scraper class
@@ -174,19 +188,23 @@ class Scraper(object):
     def print_songlist(self):
         """Print extracted songlist"""
         table = []
-        headers = ['Track', 'Duration', 'Size']
+        headers = ['N.', 'Track', 'Duration', 'Size']
 
-        for song in self.songlist:
-            table.append(song.get_info())
+        for index, song in enumerate(self.songlist):
+            table.append(song.get_info(index+1))
 
         print(tabulate(table, headers))
 
     def download_songlist(self):
         """Download extracted songlist"""
+        total_time_elapsed = datetime.timedelta()
+
         print(f"Output directory: '{self.output}'")
         for index, song in enumerate(self.songlist):
             print(f"Downloading '{song.name}' [{index+1}/{len(self.songlist)}]...")
-            song.download(self.output, self.verbosity)
+            total_time_elapsed += song.download(self.output, self.verbosity)
+
+        print(f"Total time elapsed:" + strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
 
