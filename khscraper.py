@@ -35,22 +35,25 @@ import argparse
 import datetime
 import urllib.parse
 import urllib.request
-import progressbar # progressbar2 package (Progress bar display)
-from bs4 import BeautifulSoup # beautifulsoup4 package (Web scraping class)
-from tabulate import tabulate # tabulate package (Tabulate table class)
+
+import progressbar # progressbar2 package
+from bs4 import BeautifulSoup # beautifulsoup4 package
+from tabulate import tabulate # tabulate package
 
 class KHSong(object):
     """Describe a khinsider song
 
     Attributes
+        num (str) : Number of the song
         name (str) : Name of the song
         duration (str) : Duration of the song
         size (str) : Size of the song
-        href (str) : The hypertext reference to download song
+        href (str) : Hypertext reference to download song
     """
-    def __init__(self, name, duration, size, href):
+    def __init__(self, num, name, duration, size, href):
         """KHSong __init__ method"""
 
+        self.num = num
         self.name = name
         self.duration = duration
         self.size = size
@@ -61,7 +64,7 @@ class KHSong(object):
         """Scrape khinsider song download link from URL
 
         Parameters
-            url (str) : The khinsider song URL to look for
+            url (str) : khinsider song URL to look for
 
         Return
             The khinsider song download link as a string
@@ -74,7 +77,7 @@ class KHSong(object):
         """Get HTML document from URL
 
         Parameters
-            url (str) : The URL to look for
+            url (str) : URL to look for
 
         Return
             The HTML document as a string
@@ -90,7 +93,7 @@ class KHSong(object):
         """Scrape khinsider song download link from HTML document
 
         Parameters
-            html (str) : The khinsider game HTML document to look for
+            html (str) : khinsider game HTML document to look for
 
         Return
             The khinsider song download link as a string
@@ -107,8 +110,8 @@ class KHSong(object):
         """Update progress bar (Callback function)
 
         Parameters
-            count (int) : A block number
-            block_size (int) : The maximum size blocks are read in
+            count (int) : Block number
+            block_size (int) : Maximum size blocks that are read in
             total_size (int) : Total size of the download
 
         Return
@@ -124,24 +127,24 @@ class KHSong(object):
         else:
             self.pbar.finish()
 
-    def get_info(self, num):
+    def get_info(self):
         """Get khinsider song informations
 
         Parameters
-            num (int) : Song number in the khinsider song list
+            None
 
         Return
             The khinsider song informations as a list
         """
 
-        return [num, self.name, self.duration, self.size]
+        return [self.num, self.name, self.duration, self.size]
 
-    def download(self, path, verbosity=False):
+    def download(self, path='.', verbosity=False):
         """Download khinsider song
 
         Parameters
-            path (str) : Path where to download song
-            verbosity (boolean) : Verbosity flag (True/False) to display more informations
+            path (str) : Path where to download song (Default is execution directory) [optional]
+            verbosity (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
             The time elapsed to download song as a timedelta object
@@ -163,9 +166,9 @@ class KHScraper(object):
     """Describe a khinsider game scraping attempt (aka. its songlist)
 
     Attributes
-        url (str) : The khinsider game URL
-        output (str) : The output directory for download (Default is execution directory) [optional]
-        verbosity (boolean) : A verbosity flag (True/False) to display more informations [optional]
+        url (str) : khinsider game URL
+        output (str) : Output directory for download (Default is execution directory) [optional]
+        verbosity (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
     """
 
     def __init__(self, url, output='.', verbosity=False):
@@ -186,7 +189,7 @@ class KHScraper(object):
         """Scrape khinsider game song list from URL
 
         Parameters
-            url (str) : The khinsider game URL to look for
+            url (str) : khinsider game URL to look for
 
         Return
             The khinsider game song list as a list
@@ -199,7 +202,7 @@ class KHScraper(object):
         """Get HTML document from URL
 
         Parameters
-            url (str) : The URL to look for
+            url (str) : URL to look for
 
         Return
             The HTML document as a string
@@ -215,7 +218,7 @@ class KHScraper(object):
         """Scrape khinsider game song list from HTML document
 
         Parameters
-            html (str) : The khinsider game HTML document to look for
+            html (str) : khinsider game HTML document to look for
 
         Return
             The khinsider game song list as a list
@@ -225,22 +228,22 @@ class KHScraper(object):
         songlist = []
 
         # Khinsider always has a table id called "songlist"
-        table = soup.find(lambda tag: tag.name == 'table' and tag.has_attr('id') and tag['id'] == "songlist")
+        table = soup.find('table', id='songlist')
 
         # Eliminate header/footer of the table
         rows = table.find_all(lambda tag: tag.name == 'tr')[1:-1]
 
         # Get every song
-        for row in rows:
+        for row_index, row in enumerate(rows):
             cols = row.find_all('td')
             texts = [x.text.strip() for x in cols]
 
-            for index, col in enumerate(cols):
+            for col_index, col in enumerate(cols):
                 # Khinsider always had a "clickable-row" class for href
                 if col.has_attr('class') and 'clickable-row' in col['class']:
                     href = col.find('a').get('href')
                     # We assume that duration and size are in the next columns
-                    songlist.append(KHSong(texts[index], texts[index+1], texts[index+2], href))
+                    songlist.append(KHSong(row_index+1, texts[col_index], texts[col_index+1], texts[col_index+2], href))
                     break
 
         return songlist
@@ -250,7 +253,7 @@ class KHScraper(object):
         """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
 
         Parameters
-            tdelta (timedelta object) : The timedelta object to format
+            tdelta (timedelta object) : timedelta object to format
             fmt (str) : String to format
 
         Return
@@ -277,7 +280,7 @@ class KHScraper(object):
         headers = ['N.', 'Track', 'Duration', 'Size']
 
         for index, song in enumerate(self.songlist):
-            table.append(song.get_info(index+1))
+            table.append(song.get_info())
 
         print(tabulate(table, headers))
 
