@@ -26,9 +26,17 @@ You can also import the module in another project:
 
 ```python
 import khscraper
-scraper = Scraper(url, [output=], [verbosity=])
-scraper.print_songlist() # Display song list
-scraper.download_songlist() # Download song list
+scraper = KHScraper(url, [output=], [verbosity=])
+
+# Display song list
+scraper.print()
+
+# Query user if he's ok (default to 'yes')
+if scraper.query_yes_no("\nIs this ok ?", 'yes') == False:
+    sys.exit(0)
+
+# Download song list
+scraper.download()
 ```
 
 # Author(s)

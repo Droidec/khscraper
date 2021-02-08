@@ -39,68 +39,63 @@ import progressbar # progressbar2 package (Progress bar display)
 from bs4 import BeautifulSoup # beautifulsoup4 package (Web scraping class)
 from tabulate import tabulate # tabulate package (Tabulate table class)
 
-def get_html_from_url(url):
-        """Extract HTML from URL"""
-        fp = urllib.request.urlopen(url)
+class KHSong(object):
+    """Describe a khinsider song
 
-        html = fp.read().decode("utf8")
-        fp.close()
-
-        return html
-
-def query_yes_no(question, default='yes'):
-    """Ask user if he wants to download song list"""
-    valid = {
-        'yes': True,
-        'ye': True,
-        'y': True,
-        'no': False,
-        'n': False
-    }
-    if default is None:
-        prompt = " [y/n] "
-    elif default == 'yes':
-        prompt = " [Y/n] "
-    elif default == 'no':
-        prompt = " [y/N] "
-    else:
-        raise ValueError(f"Invalid default value: '{default}'")
-
-    while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower()
-        if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-
-def strfdelta(tdelta, fmt):
-    """Format a datetime.timedelta object"""
-    d = {"days": tdelta.days}
-    d["hours"], rem = divmod(tdelta.seconds, 3600)
-    d["min"], d["sec"] = divmod(rem, 60)
-    return fmt.format(**d)
-
-class Song(object):
-    """Song class
-
-    Describe a song (name, duration, size, ...)
+    Attributes
+        name (str) : Name of the song
+        duration (str) : Duration of the song
+        size (str) : Size of the song
+        href (str) : The hypertext reference to download song
     """
     def __init__(self, name, duration, size, href):
+        """KHSong __init__ method"""
+
         self.name = name
         self.duration = duration
         self.size = size
         self.url = "https://downloads.khinsider.com" + href
         self.pbar = None
 
-    def __get_download_link_from_url(self, url):
-        """Extract download link from URL"""
+    def __scrape_download_link_from_url(self, url):
+        """Scrape khinsider song download link from URL
 
-        html = get_html_from_url(url)
-        return self.__get_download_link_from_html(html)
+        Parameters
+            url (str) : The khinsider song URL to look for
 
-    def __get_download_link_from_html(self, html):
-        """Extract download link from HTML"""
+        Return
+            The khinsider song download link as a string
+        """
+
+        html = self.__get_html_from_url(url)
+        return self.__scrape_download_link_from_html(html)
+
+    def __get_html_from_url(self, url):
+        """Get HTML document from URL
+
+        Parameters
+            url (str) : The URL to look for
+
+        Return
+            The HTML document as a string
+        """
+
+        fp = urllib.request.urlopen(url)
+        html = fp.read().decode("utf8")
+        fp.close()
+
+        return html
+
+    def __scrape_download_link_from_html(self, html):
+        """Scrape khinsider song download link from HTML document
+
+        Parameters
+            html (str) : The khinsider game HTML document to look for
+
+        Return
+            The khinsider song download link as a string
+        """
+
         soup = BeautifulSoup(html, 'html.parser')
 
         # Khinsider always had a "songDownloadLink" class in a nestsed span
@@ -108,8 +103,18 @@ class Song(object):
 
         return tag.parent.get('href')
 
-    def __show_progress(self, count, block_size, total_size):
-        """Callback function to update progressbar"""
+    def __update_progress(self, count, block_size, total_size):
+        """Update progress bar (Callback function)
+
+        Parameters
+            count (int) : A block number
+            block_size (int) : The maximum size blocks are read in
+            total_size (int) : Total size of the download
+
+        Return
+            None
+        """
+
         if self.pbar is None:
             self.pbar = progressbar.DataTransferBar(max_value=total_size)
 
@@ -119,17 +124,34 @@ class Song(object):
         else:
             self.pbar.finish()
 
-    def get_info(self, number):
-        """Return song informations as a list"""
-        return [number, self.name, self.duration, self.size]
+    def get_info(self, num):
+        """Get khinsider song informations
+
+        Parameters
+            num (int) : Song number in the khinsider song list
+
+        Return
+            The khinsider song informations as a list
+        """
+
+        return [num, self.name, self.duration, self.size]
 
     def download(self, path, verbosity=False):
-        """Download song and return the time elapsed"""
-        link = self.__get_download_link_from_url(self.url)
+        """Download khinsider song
+
+        Parameters
+            path (str) : Path where to download song
+            verbosity (boolean) : Verbosity flag (True/False) to display more informations
+
+        Return
+            The time elapsed to download song as a timedelta object
+        """
+
+        link = self.__scrape_download_link_from_url(self.url)
         if verbosity:
             print("Link found: " + link)
         file = os.path.basename(urllib.parse.unquote(link))
-        urllib.request.urlretrieve(link, os.path.join(path, file), reporthook=self.__show_progress)
+        urllib.request.urlretrieve(link, os.path.join(path, file), reporthook=self.__update_progress)
         time_elapsed = self.pbar.data()['time_elapsed']
 
         # Reset progress bar
@@ -137,12 +159,17 @@ class Song(object):
 
         return time_elapsed
 
-class Scraper(object):
-    """Scraper class
+class KHScraper(object):
+    """Describe a khinsider game scraping attempt (aka. its songlist)
 
-    Read khinsider game URL page, extract songlist and download them
+    Attributes
+        url (str) : The khinsider game URL
+        output (str) : The output directory for download (Default is execution directory) [optional]
+        verbosity (boolean) : A verbosity flag (True/False) to display more informations [optional]
     """
+
     def __init__(self, url, output='.', verbosity=False):
+        """KHScraper __init__ method"""
 
         if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
             raise ValueError(f"'{url}' is not a valid khinsider URL")
@@ -153,16 +180,47 @@ class Scraper(object):
         self.url = url
         self.output = output + '/' if not output.endswith('/') else output
         self.verbosity = verbosity
-        self.songlist = self.__get_songlist_from_url(self.url)
+        self.songlist = self.__scrape_songlist_from_url(self.url)
 
-    def __get_songlist_from_url(self, url):
-        """Extract songlist from URL"""
+    def __scrape_songlist_from_url(self, url):
+        """Scrape khinsider game song list from URL
 
-        html = get_html_from_url(url)
-        return self.__get_songlist_from_html(html)
+        Parameters
+            url (str) : The khinsider game URL to look for
 
-    def __get_songlist_from_html(self, html):
-        """Extract songlist from HTML"""
+        Return
+            The khinsider game song list as a list
+        """
+
+        html = self.__get_html_from_url(url)
+        return self.__scrape_songlist_from_html(html)
+
+    def __get_html_from_url(self, url):
+        """Get HTML document from URL
+
+        Parameters
+            url (str) : The URL to look for
+
+        Return
+            The HTML document as a string
+        """
+
+        fp = urllib.request.urlopen(url)
+        html = fp.read().decode("utf8")
+        fp.close()
+
+        return html
+
+    def __scrape_songlist_from_html(self, html):
+        """Scrape khinsider game song list from HTML document
+
+        Parameters
+            html (str) : The khinsider game HTML document to look for
+
+        Return
+            The khinsider game song list as a list
+        """
+
         soup = BeautifulSoup(html, 'html.parser')
         songlist = []
 
@@ -182,13 +240,39 @@ class Scraper(object):
                 if col.has_attr('class') and 'clickable-row' in col['class']:
                     href = col.find('a').get('href')
                     # We assume that duration and size are in the next columns
-                    songlist.append(Song(texts[index], texts[index+1], texts[index+2], href))
+                    songlist.append(KHSong(texts[index], texts[index+1], texts[index+2], href))
                     break
 
         return songlist
 
-    def print_songlist(self):
-        """Print extracted songlist"""
+
+    def __strfdelta(self, tdelta, fmt):
+        """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
+
+        Parameters
+            tdelta (timedelta object) : The timedelta object to format
+            fmt (str) : String to format
+
+        Return
+            The formatted timedelta object as a string
+        """
+
+        d = {"days": tdelta.days}
+        d["hours"], rem = divmod(tdelta.seconds, 3600)
+        d["min"], d["sec"] = divmod(rem, 60)
+        return fmt.format(**d)
+
+
+    def print(self):
+        """Pretty-print khinsider game song list in a table
+
+        Parameters
+            None
+
+        Return
+            None
+        """
+
         table = []
         headers = ['N.', 'Track', 'Duration', 'Size']
 
@@ -197,8 +281,51 @@ class Scraper(object):
 
         print(tabulate(table, headers))
 
-    def download_songlist(self):
-        """Download extracted songlist"""
+    def query_yes_no(self, question, default='yes'):
+        """Prompt user for a boolean choice
+
+        Parameters
+            question (str) : Question to ask to user
+            default (str) : Default answer (Default is 'yes') [optional]
+
+        Return
+            A boolean representing user choice
+        """
+
+        valid = {
+            'yes': True,
+            'ye': True,
+            'y': True,
+            'no': False,
+            'n': False
+        }
+        if default is None:
+            prompt = " [y/n] "
+        elif default == 'yes':
+            prompt = " [Y/n] "
+        elif default == 'no':
+            prompt = " [y/N] "
+        else:
+            raise ValueError(f"Invalid default value: '{default}'")
+
+        while True:
+            sys.stdout.write(question + prompt)
+            choice = input().lower()
+            if default is not None and choice == '':
+                return valid[default]
+            elif choice in valid:
+                return valid[choice]
+
+    def download(self):
+        """Download khinsider game song list
+
+        Parameters
+            None
+
+        Return
+            None
+        """
+
         total_time_elapsed = datetime.timedelta()
 
         print(f"Output directory: '{self.output}'")
@@ -206,7 +333,7 @@ class Scraper(object):
             print(f"Downloading '{song.name}' [{index+1}/{len(self.songlist)}]...")
             total_time_elapsed += song.download(self.output, self.verbosity)
 
-        print(f"Total time elapsed:" + strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
+        print(f"Total time elapsed:" + self.__strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
 
@@ -218,15 +345,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Analyze URL
-    scraper = Scraper(args.url, args.output, args.verbose)
+    # Scrap game song list
+    scraper = KHScraper(args.url, args.output, args.verbose)
 
     # Display songlist
-    scraper.print_songlist()
+    scraper.print()
 
     # Prompt user
-    if query_yes_no("\nIs this ok ?", 'yes') == False:
+    if scraper.query_yes_no("\nIs this ok ?", 'yes') == False:
         sys.exit(0)
 
     # Download songlist
-    scraper.download_songlist()
+    scraper.download()
