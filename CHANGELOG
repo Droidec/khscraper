@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+Version 1.2.0
+-------------
+- Add source code comments
+- Use of a markdown README
+- Optimize some source code parts
+
 Version 1.1.0
 -------------
 - Add a number column to the summary table
