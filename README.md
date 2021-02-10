@@ -1,4 +1,4 @@
-# khscrapper
+# khscraper
 
 `khscraper` is a [khinsider](http://downloads.khinsider.com/) scraping tool coded in [Python](https://www.python.org/).
 It allows you to download all songs hosted on khinsider for a given game URL.
