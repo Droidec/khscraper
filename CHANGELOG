@@ -4,13 +4,13 @@ CHANGELOG
 Version 2.1.0
 -------------
 - Add the possibility to download the album song list to a given start/end included index
-- Fix a bug with lower/uppercase quality format
+- Fix a bug with lower/uppercase download format
 - Fix typo
 
 Version 2.0.0
 -------------
 - Complete revision of the source code
-- Add the possibility to choose the quality format (MP3, FLAC, OGG, ...)
+- Add the possibility to choose the download format (MP3, FLAC, OGG, ...)
 
 Version 1.2.0
 -------------

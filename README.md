@@ -24,11 +24,12 @@ python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/king
 ```
 
 Available options:
-- Choose the output directory
-- Choose the quality format (MP3, FLAC, OGG, ...)
-- Choose the start index in the album song list
-- Choose the end index in the album song list
-- Enable verbose mode
+- Display help (-h, --help)
+- Choose download format (MP3, FLAC, OGG, ...) (-f, --format)
+- Choose output directory (-o, --output)
+- Choose start index in the album song list (--start)
+- Choose end index in the album song list (--end)
+- Enable verbose mode (-v, --verbose)
 
 You can also import the module in another project:
 

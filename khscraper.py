@@ -409,11 +409,11 @@ class KHAlbum(object):
 if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(description="Download song list from a KHinsider album URL")
-    parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
-    parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
-    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="Verbose mode (Default is False)")
-    parser.add_argument('--start', default=None, type=int, help="Start download at a given included index in the song list (Default is None)")
-    parser.add_argument('--end', default=None, type=int, help="End download at a given included index in the song list (Default is None)")
+    parser.add_argument('-f', '--format', default='mp3', help="Choose download format (Default is MP3)")
+    parser.add_argument('-o', '--output', default='.', help="Choose output directory (Default is execution directory)")
+    parser.add_argument('--start', default=None, type=int, help="Choose start index in the album song list (Default is None)")
+    parser.add_argument('--end', default=None, type=int, help="Choose end index in the album song list (Default is None)")
+    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="Enable verbose mode (Default is False)")
     parser.add_argument('url', help="KHinsider album URL")
 
     args = parser.parse_args()
