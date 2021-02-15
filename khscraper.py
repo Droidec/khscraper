@@ -423,7 +423,7 @@ if __name__ == "__main__":
     if args.format.lower() not in album.get_available_formats():
         raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}' album")
 
-    # Print album content
+    # Print album informations
     album.print()
     print(f"\nChosen format: {args.format.upper()}")
     print(f"Chosen directory: {args.output}")

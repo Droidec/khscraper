@@ -36,7 +36,7 @@ You can also import the module in another project:
 import khscraper
 album = KHAlbum(url)
 
-# Get album informations
+# Get album informations (if needed)
 album.get_name()
 album.get_available_formats()
 album.get_songlist()
