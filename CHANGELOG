@@ -3,7 +3,7 @@ CHANGELOG
 
 Version 2.1.0
 -------------
-- Add the possibility to download the album song list to a given start/end index (included)
+- Add the possibility to download the album song list to a given start/end included index
 - Fix a bug with lower/uppercase quality format
 - Fix typo
 

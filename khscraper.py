@@ -343,9 +343,9 @@ class KHAlbum(object):
         for song in songlist:
             result.append(song.get_attr_values())
 
-            # Calculate duration
-            s = sum(map(lambda x,y : x*int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
-            tot_duration += timedelta(seconds=int(s))
+            # Calculate duration in seconds
+            sec = sum(map(lambda x,y : x*int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
+            tot_duration += timedelta(seconds=int(sec))
 
         print(tabulate(result, headers, tablefmt='presto'))
 
@@ -370,7 +370,7 @@ class KHAlbum(object):
         Raise
             ValueError if:
                 - The output is not a directory
-                - The start or end index are invalid
+                - The start or end index(es) are invalid
         """
         songlist = self.get_songlist()
         total_time_elapsed = timedelta()
@@ -380,13 +380,13 @@ class KHAlbum(object):
             raise ValueError(f"'{output}' is not a directory")
 
         if start and (start < 0 or start > len(songlist)):
-            raise ValueError("The start index is invalid")
+            raise ValueError(f"The start index '{start}' is invalid")
 
         if end and (end < 0 or end > len(songlist)):
-            raise ValueError("The end index is invalid")
+            raise ValueError(f"The end index '{end}' is invalid")
 
         if start and end and start > end:
-            raise ValueError("The start index is higher than the end index")
+            raise ValueError(f"The start index '{start}' is higher than the end index '{end}'")
 
         # Download the song list of the album
         for index, song in enumerate(self.get_songlist()):
@@ -407,7 +407,6 @@ class KHAlbum(object):
         print(f"Total time elapsed:" + self.__strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
-
     # Parse arguments
     parser = argparse.ArgumentParser(description="Extract song list from a KHinsider album URL")
     parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
@@ -422,7 +421,7 @@ if __name__ == "__main__":
 
     # Check consistency
     if args.format.lower() not in album.get_available_formats():
-        raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}'")
+        raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}' album")
 
     # Print album content
     album.print()
@@ -433,7 +432,7 @@ if __name__ == "__main__":
     if args.end:
         print(f"Chosen end index: {args.end}")
 
-    if query_yes_no("\nIs this ok ?", 'yes') == False:
+    if not query_yes_no("\nIs this ok ?", 'yes'):
         sys.exit(1)
 
     # Download album song list
