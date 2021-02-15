@@ -354,28 +354,54 @@ class KHAlbum(object):
         for index, fmt in enumerate(self.get_available_formats()):
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
 
-    def download(self, output='.', fmt='mp3', verbose=False):
+    def download(self, output='.', fmt='mp3', start=None, end=None, verbose=False):
         """Download the song list of the album with a given format to output directory
 
         Parameters
             output (str) : Output directory (Default is execution directory) [optional]
             fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            start (int) : Start download at a given included index in the song list (Default is None) [optional]
+            end (int) : End download at a given included index in the song list (Default is None) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
             None
 
         Raise
-            ValueError if output is not a directory
+            ValueError if:
+                - The output is not a directory
+                - The start or end index are invalid
         """
-        if not os.path.isdir(output):
-            raise ValueError(f"'{output}' is not a directory")
-
         songlist = self.get_songlist()
         total_time_elapsed = timedelta()
 
+        # Check consistency
+        if not os.path.isdir(output):
+            raise ValueError(f"'{output}' is not a directory")
+
+        if start and (start < 0 or start > len(songlist)):
+            raise ValueError("The start index is invalid")
+
+        if end and (end < 0 or end > len(songlist)):
+            raise ValueError("The end index is invalid")
+
+        if start and end and start > end:
+            raise ValueError("The start index is higher than the end index")
+
+        # Download the song list of the album
         for index, song in enumerate(self.get_songlist()):
-            print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
+            # Skip if below the start index
+            if start and index+1 < start:
+                continue
+
+            # Break if higher than the end index
+            if end and index+1 > end:
+                break
+
+            if end:
+                print(f"Downloading '{song.attr['song name']}' [{index+1}/{end}]...")
+            else:
+                print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
             total_time_elapsed += song.download(output, fmt, verbose)
 
         print(f"Total time elapsed:" + self.__strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
@@ -383,10 +409,12 @@ class KHAlbum(object):
 if __name__ == "__main__":
 
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Extract song list from a khinsider game URL")
+    parser = argparse.ArgumentParser(description="Extract song list from a KHinsider album URL")
     parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
     parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
-    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed")
+    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed (Default is False)")
+    parser.add_argument('--start', default=None, type=int, help="Start download at a given included index in the song list (Default is None)")
+    parser.add_argument('--end', default=None, type=int, help="End download at a given included index in the song list (Defaulst is None)")
     parser.add_argument('url', help="KHinsider URL")
 
     args = parser.parse_args()
@@ -405,4 +433,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Download album song list
-    album.download(args.output, args.format.lower(), args.verbose)
+    album.download(args.output, args.format.lower(), args.start, args.end, args.verbose)

@@ -20,7 +20,7 @@ From the command line, simply call the python script as follows (output director
 ```cmd
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/amnesia
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/hitman-2-soundtrack
-python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost --format FLAC
+python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost
 ```
 
 You can also import the module in another project:
