@@ -25,6 +25,7 @@ python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/king
 
 Available options:
 - Choose the output directory
+- Choose the quality format (MP3, FLAC, OGG, ...)
 - Choose the start index in the album song list
 - Choose the end index in the album song list
 - Enable verbose mode
