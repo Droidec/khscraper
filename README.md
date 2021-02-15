@@ -2,7 +2,7 @@
 
 `khscraper` is a [khinsider](http://downloads.khinsider.com/) scraping tool coded in [Python](https://www.python.org/).
 It allows you to download all songs hosted on khinsider for a given album URL.
-By default, khinsider has disabled the all-in-one feature. This program attempts to re-automate the process.
+By default, khinsider has disabled the all-in-one download feature. This program attempts to re-automate the process.
 
 # Dependencies
 
