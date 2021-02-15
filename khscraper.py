@@ -405,4 +405,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Download album song list
-    album.download(args.output, args.format, args.verbose)
+    album.download(args.output, args.format.lower(), args.verbose)

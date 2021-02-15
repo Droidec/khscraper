@@ -15,12 +15,12 @@ Python dependencies:
 
 # Usage
 
-From the command line, simply call the python script as follows:
+From the command line, simply call the python script as follows (output directory & quality format in option):
 
 ```cmd
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/amnesia
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/hitman-2-soundtrack
-python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost
+python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost --format FLAC
 ```
 
 You can also import the module in another project:
