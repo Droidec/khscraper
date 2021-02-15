@@ -324,8 +324,8 @@ class KHAlbum(object):
 
         return songlist
 
-    def print_songlist(self):
-        """Print the song list of the album and its relative informations
+    def print(self):
+        """Print the album name, its songlist and misc informations
 
         Parameters
             None
@@ -398,9 +398,9 @@ if __name__ == "__main__":
     if args.format.lower() not in album.get_available_formats():
         raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}'")
 
-    # Retrieve album content
-    album.print_songlist()
-    print(f"Chosen format: {args.format.upper()}")
+    # Print album content
+    album.print()
+    print(f"\nChosen format: {args.format.upper()}")
     print(f"Chosen directory: {args.output}")
 
     if query_yes_no("\nIs this ok ?", 'yes') == False:

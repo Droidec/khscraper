@@ -27,17 +27,18 @@ You can also import the module in another project:
 
 ```python
 import khscraper
-scraper = KHScraper(url, [output=], [verbosity=])
+album = KHAlbum(url)
 
-# Display song list
-scraper.print()
+# Get album informations
+album.get_name()
+album.get_available_formats()
+album.get_songlist()
 
-# Query user if he's ok (default to 'yes')
-if scraper.query_yes_no("\nIs this ok ?", 'yes') == False:
-    sys.exit(0)
+# Print album informations
+album.print()
 
-# Download song list
-scraper.download()
+# Download album song list
+album.download([output=], [verbosity=])
 ```
 
 # Author(s)
