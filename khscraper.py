@@ -428,6 +428,10 @@ if __name__ == "__main__":
     album.print()
     print(f"\nChosen format: {args.format.upper()}")
     print(f"Chosen directory: {args.output}")
+    if args.start:
+        print(f"Chosen start index: {args.start}")
+    if args.end:
+        print(f"Chosen end index: {args.end}")
 
     if query_yes_no("\nIs this ok ?", 'yes') == False:
         sys.exit(1)

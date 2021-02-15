@@ -1,7 +1,7 @@
 # khscraper
 
 `khscraper` is a [khinsider](http://downloads.khinsider.com/) scraping tool coded in [Python](https://www.python.org/).
-It allows you to download all songs hosted on khinsider for a given game URL.
+It allows you to download all songs hosted on khinsider for a given album URL.
 By default, khinsider has disabled this feature. This program attempts to re-automate this process.
 
 # Dependencies
@@ -15,13 +15,19 @@ Python dependencies:
 
 # Usage
 
-From the command line, simply call the python script as follows (output directory & quality format in option):
+From the command line, simply call the python script as follows:
 
 ```cmd
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/amnesia
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/hitman-2-soundtrack
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost
 ```
+
+Available options:
+- Choose the output directory
+- Choose the start index in the album song list
+- Choose the end index in the album song list
+- Enable verbose mode
 
 You can also import the module in another project:
 
@@ -38,7 +44,7 @@ album.get_songlist()
 album.print()
 
 # Download album song list
-album.download([output=], [verbosity=])
+album.download([output=], [fmt=] [start=] [end=] [verbose=])
 ```
 
 # Author(s)
