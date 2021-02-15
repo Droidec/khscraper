@@ -203,7 +203,7 @@ class KHAlbum(object):
                 - If KHinsider album content is not found
         """
         if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
-            raise ValueError(f"'{url}' is not a valid KHinsider URL")
+            raise ValueError(f"'{url}' is not a valid KHinsider album URL")
 
         self.url = url
         self.album = self.__scrape_album_content()
@@ -408,13 +408,13 @@ class KHAlbum(object):
 
 if __name__ == "__main__":
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Extract song list from a KHinsider album URL")
+    parser = argparse.ArgumentParser(description="Download song list from a KHinsider album URL")
     parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
     parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
-    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed (Default is False)")
+    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="Verbose mode (Default is False)")
     parser.add_argument('--start', default=None, type=int, help="Start download at a given included index in the song list (Default is None)")
     parser.add_argument('--end', default=None, type=int, help="End download at a given included index in the song list (Default is None)")
-    parser.add_argument('url', help="KHinsider URL")
+    parser.add_argument('url', help="KHinsider album URL")
 
     args = parser.parse_args()
     album = KHAlbum(args.url)
