@@ -20,6 +20,7 @@ From the command line, simply call the python script as follows:
 ```cmd
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/amnesia
 python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/hitman-2-soundtrack
+python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/kingdom-hearts-ii-ost
 ```
 
 You can also import the module in another project:
@@ -45,4 +46,4 @@ Droidec (Marc G.) <https://github.com/Droidec>
 
 # Licence
 
-`khscraper` is released under BSD-3 clause licence. See the LICENCE file in this source distribution for more information
+`khscraper` is released under BSD-3 clause licence. See the LICENCE file in this source distribution for more information.
