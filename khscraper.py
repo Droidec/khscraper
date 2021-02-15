@@ -414,7 +414,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed (Default is False)")
     parser.add_argument('--start', default=None, type=int, help="Start download at a given included index in the song list (Default is None)")
-    parser.add_argument('--end', default=None, type=int, help="End download at a given included index in the song list (Defaulst is None)")
+    parser.add_argument('--end', default=None, type=int, help="End download at a given included index in the song list (Default is None)")
     parser.add_argument('url', help="KHinsider URL")
 
     args = parser.parse_args()
