@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+Version 2.0.0
+-------------
+- Complete revision of the source code
+- Add the possibility to choose the quality format (MP3, FLAC, OGG, ...)
+
 Version 1.2.0
 -------------
 - Add source code comments

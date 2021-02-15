@@ -32,12 +32,12 @@ import re
 import os
 import sys
 import argparse
-import datetime
-import collections
-import urllib.parse
-import urllib.request
+from datetime import timedelta
+from collections import OrderedDict
+from urllib.parse import urljoin, unquote
+from urllib.request import urlopen, urlretrieve
 
-import progressbar # progressbar2 package
+from progressbar import DataTransferBar # progressbar2 package
 from bs4 import BeautifulSoup # beautifulsoup4 package
 from tabulate import tabulate # tabulate package
 
@@ -51,13 +51,13 @@ def get_html_from_url(url):
         The HTML document as a string
     """
 
-    fp = urllib.request.urlopen(url)
+    fp = urlopen(url)
     html = fp.read().decode("utf8")
     fp.close()
 
     return html
 
-def query_yes_no(self, question, default='yes'):
+def query_yes_no(question, default='yes'):
         """Prompt user for a boolean choice
 
         Parameters
@@ -102,8 +102,32 @@ class KHSong(object):
 
     def __init__(self, url, attr):
         """KHSong init"""
+        if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
+            raise ValueError(f"'{url}' is not a valid KHinsider URL")
+
         self.url = url
         self.attr = attr
+        self.pbar = None
+
+    def __update_progress(self, count, block_size, total_size):
+        """Update progress bar (Callback function)
+
+        Parameters
+            count (int) : Block number
+            block_size (int) : Maximum size blocks that are read in
+            total_size (int) : Total size of the download
+
+        Return
+            None
+        """
+        if self.pbar is None:
+            self.pbar = DataTransferBar(max_value=total_size)
+
+        downloaded = count * block_size
+        if downloaded < total_size:
+            self.pbar.update(downloaded)
+        else:
+            self.pbar.finish()
 
     def get_attr_values(self):
         """Get song attributes
@@ -116,6 +140,53 @@ class KHSong(object):
         """
         return [value for value in self.attr.values()]
 
+    def get_download_links(self):
+        """Get song download links
+
+        Parameters
+            None
+
+        Return
+            A list of strings representing download links
+        """
+        html = get_html_from_url(self.url)
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # Relevant download links are hosted on "vgmsite"
+        links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+
+        return links
+
+    def download(self, output='.', fmt='mp3', verbose=False):
+        """Download a song with a given format to output directory
+
+        Parameters
+            output (str) : Output directory (Default is execution directory) [optional]
+            fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
+
+        Return
+            The time elapsed to download song as a timedelta object
+        """
+        links = self.get_download_links()
+
+        for link in links:
+            if os.path.splitext(link)[1][1:] == fmt:
+                if verbose:
+                    print("Link found: " + link)
+
+                # Download song with given format to output directory
+                file = os.path.basename(unquote(link))
+                urlretrieve(link, os.path.join(output, file), reporthook=self.__update_progress)
+                time_elasped = self.pbar.data()['time_elapsed']
+
+                # Reset progress bar
+                self.pbar = None
+
+                return time_elasped
+
+        raise ValueError(f"{fmt.upper()} format not found for '{self.attr['song name']}' song")
+
 class KHAlbum(object):
     """KHAlbum describe a KHinsider album content
 
@@ -125,24 +196,18 @@ class KHAlbum(object):
         verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
     """
 
-    def __init__(self, url, output='.', verbose=False):
+    def __init__(self, url):
         """KHAlbum init
 
         Raise
             ValueError :
                 - If the URL is not valid
-                - If output is not a directory
                 - If KHinsider album content is not found
         """
         if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
             raise ValueError(f"'{url}' is not a valid KHinsider URL")
 
-        if not os.path.isdir(output):
-            raise ValueError(f"'{output}' is not a directory")
-
         self.url = url
-        self.output = output + '/' if not output.endswith('/') else output
-        self.verbose = verbose
         self.album = self.__scrape_album_content()
         self.headers, self.songlist, self.footers = self.__get_songlist_content()
 
@@ -188,7 +253,10 @@ class KHAlbum(object):
         if songlist is None:
             raise ValueError("The album content does not have any song list!")
 
+        # Change headers to match song attributes indexes
         headers = [th.get_text(strip=True) for th in songlist.find('tr', id='songlist_header').find_all('th')]
+        headers.insert(headers.index('Song Name')+1, 'Duration')
+
         footers = [th.get_text(strip=True) for th in songlist.find('tr', id='songlist_footer').find_all('th')]
 
         return (headers, songlist, footers)
@@ -226,9 +294,9 @@ class KHAlbum(object):
             None
 
         Return
-            A list of available formats (mp3, flac, ogg, ...)
+            A list of strings representing available formats (mp3, flac, ogg, ...)
         """
-        formats = self.headers[self.headers.index('Song Name')+1:-1]
+        formats = self.headers[self.headers.index('Duration')+1:-1]
         return [fmt.lower() for fmt in formats]
 
     def get_songlist(self):
@@ -240,22 +308,19 @@ class KHAlbum(object):
         Return
             A song list as KHSong objects
         """
-        # Change header to match song attributes indexes
-        headers = self.headers.copy()
-        headers.insert(headers.index('Song Name')+1, 'Duration')
         songlist = []
 
         # Search song attributes within each relevant row of the song list table
         for tr in self.songlist('tr')[1:-1]:
-            attr = collections.OrderedDict()
+            attr = OrderedDict()
             url = tr.find('a')['href']
             cells = tr.find_all('td')
-            for index, header in enumerate(headers):
+            for index, header in enumerate(self.headers):
                 if not header:
                     continue # Skip unrelevant columns
                 attr[header.lower()] = cells[index].text
 
-            songlist.append(KHSong(urllib.parse.urljoin(self.url, url), attr))
+            songlist.append(KHSong(urljoin(self.url, url), attr))
 
         return songlist
 
@@ -270,12 +335,10 @@ class KHAlbum(object):
         """
         result = []
         songlist = self.get_songlist()
-        #tot_duration = datetime.timedelta()
+        tot_duration = timedelta()
 
-        # Change header to match song attributes indexes
-        headers = self.headers.copy()
-        headers.insert(headers.index('Song Name') + 1, 'Duration')
-        headers = list(filter(None, headers))
+        # Eliminate empty headers
+        headers = [header for header in self.headers if header]
 
         print(f"{self.get_name()}\n")
 
@@ -283,32 +346,39 @@ class KHAlbum(object):
             result.append(song.get_attr_values())
 
             # Calculate duration
-            #s = sum(map(lambda x,y : x*int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
-            #tot_duration += datetime.timedelta(seconds=int(s))
+            s = sum(map(lambda x,y : x*int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
+            tot_duration += timedelta(seconds=int(s))
 
         print(tabulate(result, headers, tablefmt='presto'))
 
-        print(f"\nTotal duration: {self.footers[self.footers.index('Total:')+1]}")
-        #print(f"\nTotal duration: {self.__strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
+        # We could retrieve the total duration in the footer, but we want to pretify it easily
+        print(f"\nTotal duration: {self.__strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
         for index, fmt in enumerate(self.get_available_formats()):
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
 
-    def download(self):
-        """Download khinsider game song list
+    def download(self, output='.', fmt='mp3', verbose=False):
+        """Download the song list of the album with a given format to output directory
 
         Parameters
-            None
+            output (str) : Output directory (Default is execution directory) [optional]
+            fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
             None
+
+        Raise
+            ValueError if output is not a directory
         """
+        if not os.path.isdir(output):
+            raise ValueError(f"'{output}' is not a directory")
 
-        total_time_elapsed = datetime.timedelta()
+        songlist = self.get_songlist()
+        total_time_elapsed = timedelta()
 
-        print(f"Output directory: '{self.output}'")
-        for index, song in enumerate(self.songlist):
-            print(f"Downloading '{song.name}' [{index+1}/{len(self.songlist)}]...")
-            total_time_elapsed += song.download(self.output, self.verbose)
+        for index, song in enumerate(self.get_songlist()):
+            print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
+            total_time_elapsed += song.download(output, fmt, verbose)
 
         print(f"Total time elapsed:" + self.__strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
@@ -316,12 +386,25 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser(description="Extract song list from a khinsider game URL")
+    parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
     parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed")
     parser.add_argument('url', help="Khinsider URL")
 
     args = parser.parse_args()
+    album = KHAlbum(args.url)
 
-    # Scrap game song list
-    album = KHAlbum(args.url, args.output, args.verbose)
+    # Check consistency
+    if args.format.lower() not in album.get_available_formats():
+        raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}'")
+
+    # Retrieve album content
     album.print_songlist()
+    print(f"Chosen format: {args.format.upper()}")
+    print(f"Chosen directory: {args.output}")
+
+    if query_yes_no("\nIs this ok ?", 'yes') == False:
+        sys.exit(1)
+
+    # Download album song list
+    album.download(args.output, args.format, args.verbose)
