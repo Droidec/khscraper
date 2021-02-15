@@ -192,8 +192,6 @@ class KHAlbum(object):
 
     Attributes
         url (str) : KHinsider album URL
-        output (str) : Output directory for downloadable content (Default is execution directory) [optional]
-        verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
     """
 
     def __init__(self, url):
@@ -389,7 +387,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--format', default='mp3', help="Download format (Default is MP3)")
     parser.add_argument('-o', '--output', default='.', help="Directory output (Default is execution directory)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="More informations displayed")
-    parser.add_argument('url', help="Khinsider URL")
+    parser.add_argument('url', help="KHinsider URL")
 
     args = parser.parse_args()
     album = KHAlbum(args.url)
