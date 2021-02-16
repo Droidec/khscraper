@@ -4,6 +4,7 @@ CHANGELOG
 Version 2.1.0
 -------------
 - Add the possibility to download the album song list to a given start/end included index
+- Add the possibility to download covers
 - Fix a bug with lower/uppercase download format
 - Fix typo
 

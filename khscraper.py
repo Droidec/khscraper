@@ -92,25 +92,18 @@ def query_yes_no(question, default='yes'):
             elif choice in valid:
                 return valid[choice]
 
-class KHSong(object):
-    """KHSong describe a KHinsider song
+class PBar(object):
+    """PBar describe a progress bar
 
     Attributes
-        url (str) : KHinsider song URL
-        attr (OrderDict) : Song attributes (name, duration, formats ...)
+        None
     """
-
-    def __init__(self, url, attr):
-        """KHSong init"""
-        if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
-            raise ValueError(f"'{url}' is not a valid KHinsider URL")
-
-        self.url = url
-        self.attr = attr
+    def __init__(self):
+        """KHFile init"""
         self.pbar = None
 
-    def __update_progress(self, count, block_size, total_size):
-        """Update progress bar (Callback function)
+    def update_progress_bar(self, count, block_size, total_size):
+        """Initialize/Update progress bar (Callback function)
 
         Parameters
             count (int) : Block number
@@ -128,6 +121,63 @@ class KHSong(object):
             self.pbar.update(downloaded)
         else:
             self.pbar.finish()
+
+class KHCover(PBar):
+    """KHCover describe a KHinsider cover
+
+    Attributes
+        url (str) : KHinsider cover URL
+    """
+
+    def __init__(self, url):
+        """KHCover init"""
+        super().__init__()
+
+        if not url.startswith("https://vgmsite.com/soundtracks/"):
+            raise ValueError(f"'{url}' is not a valid KHinsider cover URL")
+
+        self.url = url
+
+    def download(self, output='.', verbose=False):
+        """Download a cover to output directory
+
+        Parameters
+            output (str) : Output directory (Default is execution directory) [optional]
+            verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
+
+        Return
+            The time elapsed to download cover as a timedelta object
+        """
+        if verbose:
+            print("Link found: " + self.url)
+
+        # Download cover to output directory
+        file = os.path.basename(unquote(self.url))
+        urlretrieve(self.url, os.path.join(output, file), reporthook=self.update_progress_bar)
+        time_elasped = self.pbar.data()['time_elapsed']
+
+        # Reset progress bar
+        self.pbar = None
+
+        return time_elasped
+
+class KHSong(PBar):
+    """KHSong describe a KHinsider song
+
+    Attributes
+        url (str) : KHinsider song URL
+        attr (OrderDict) : Song attributes (name, duration, formats ...)
+    """
+
+    def __init__(self, url, attr):
+        """KHSong init"""
+        super().__init__()
+
+        if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
+            raise ValueError(f"'{url}' is not a valid KHinsider song URL")
+
+        self.url = url
+        self.attr = attr
 
     def get_attr_values(self):
         """Get song attributes
@@ -177,7 +227,7 @@ class KHSong(object):
 
                 # Download song with given format to output directory
                 file = os.path.basename(unquote(link))
-                urlretrieve(link, os.path.join(output, file), reporthook=self.__update_progress)
+                urlretrieve(link, os.path.join(output, file), reporthook=self.update_progress_bar)
                 time_elasped = self.pbar.data()['time_elapsed']
 
                 # Reset progress bar
@@ -297,6 +347,19 @@ class KHAlbum(object):
         formats = self.headers[self.headers.index('Duration')+1:-1]
         return [fmt.lower() for fmt in formats]
 
+    def get_covers(self):
+        """Get the album covers
+
+        Parameters
+            None
+
+        Return
+            A cover list as KHCover objects
+        """
+        # Relevant covers are hosted on "vgmsite"
+        covers = [KHCover(anchor['href']) for anchor in self.album.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+        return covers
+
     def get_songlist(self):
         """Get the song list of the album
 
@@ -332,6 +395,7 @@ class KHAlbum(object):
             None
         """
         result = []
+        covers = self.get_covers()
         songlist = self.get_songlist()
         tot_duration = timedelta()
 
@@ -353,8 +417,9 @@ class KHAlbum(object):
         print(f"\nTotal duration: {self.__strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
         for index, fmt in enumerate(self.get_available_formats()):
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
+        print(f"Number of covers: {len(self.get_covers())}")
 
-    def download(self, output='.', fmt='mp3', start=None, end=None, verbose=False):
+    def download(self, output='.', fmt='mp3', start=None, end=None, covers=False, verbose=False):
         """Download the song list of the album with a given format to output directory
 
         Parameters
@@ -362,6 +427,7 @@ class KHAlbum(object):
             fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
             start (int) : Start download at a given included index in the song list (Default is None) [optional]
             end (int) : End download at a given included index in the song list (Default is None) [optional]
+            covers (boolean) : Download covers (Default is False) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
@@ -372,6 +438,7 @@ class KHAlbum(object):
                 - The output is not a directory
                 - The start or end index(es) are invalid
         """
+        covers = self.get_covers()
         songlist = self.get_songlist()
         total_time_elapsed = timedelta()
 
@@ -388,8 +455,14 @@ class KHAlbum(object):
         if start and end and start > end:
             raise ValueError(f"The start index '{start}' is higher than the end index '{end}'")
 
+        # Download covers of the album
+        if covers:
+            for index, cover in enumerate(covers):
+                print(f"Downloading cover [{index+1}/{len(covers)}]...")
+                total_time_elapsed += cover.download(output, verbose)
+
         # Download the song list of the album
-        for index, song in enumerate(self.get_songlist()):
+        for index, song in enumerate(songlist):
             # Skip if below the start index
             if start and index+1 < start:
                 continue
@@ -413,6 +486,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', default='.', help="Choose output directory (Default is execution directory)")
     parser.add_argument('--start', default=None, type=int, help="Choose start index in the album song list (Default is None)")
     parser.add_argument('--end', default=None, type=int, help="Choose end index in the album song list (Default is None)")
+    parser.add_argument('-c', '--covers', default=False, action="store_true", help="Download covers (Default is False)")
     parser.add_argument('-v', '--verbose', default=False, action="store_true", help="Enable verbose mode (Default is False)")
     parser.add_argument('url', help="KHinsider album URL")
 
@@ -431,9 +505,10 @@ if __name__ == "__main__":
         print(f"Chosen start index: {args.start}")
     if args.end:
         print(f"Chosen end index: {args.end}")
+    print(f"Download covers: {args.covers}")
 
     if not query_yes_no("\nIs this ok ?", 'yes'):
         sys.exit(1)
 
     # Download album song list
-    album.download(args.output, args.format.lower(), args.start, args.end, args.verbose)
+    album.download(args.output, args.format.lower(), args.start, args.end, args.covers, args.verbose)

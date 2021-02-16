@@ -29,6 +29,7 @@ Available options:
 - Choose output directory (-o, --output)
 - Choose start index in the album song list (--start)
 - Choose end index in the album song list (--end)
+- Download covers (-c, --covers)
 - Enable verbose mode (-v, --verbose)
 
 You can also import the module in another project:
@@ -40,13 +41,14 @@ album = KHAlbum(url)
 # Get album informations (if needed)
 album.get_name()
 album.get_available_formats()
-album.get_songlist()
+album.get_covers() # List of KHCover objects
+album.get_songlist() # List of KHSong objects
 
 # Print album informations
 album.print()
 
 # Download album song list
-album.download([output=], [fmt=] [start=] [end=] [verbose=])
+album.download([output=], [fmt=] [start=] [end=] [covers=] [verbose=])
 ```
 
 # Author(s)
