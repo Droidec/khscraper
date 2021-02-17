@@ -7,6 +7,7 @@ Version 2.1.0
 - Add the possibility to download covers
 - Improve source code with pylint
 - Fix a bug with lower/uppercase download format
+- Fix URL bad characters
 - Fix typo
 
 Version 2.0.0

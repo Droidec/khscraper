@@ -49,7 +49,7 @@ album.get_songlist() # List of KHSong objects
 album.print()
 
 # Download album song list
-album.download([output=], [fmt=], [start=], [end=], [covers=], [verbose=])
+album.download([output=], [fmt=], [start=], [end=], [dlcovers=], [verbose=])
 ```
 
 # Author(s)

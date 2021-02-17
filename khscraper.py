@@ -37,6 +37,7 @@ from collections import OrderedDict
 from urllib.parse import urljoin, unquote
 from urllib.request import urlopen, urlretrieve
 
+from requests.utils import requote_uri # requests package
 from progressbar import DataTransferBar # progressbar2 package
 from bs4 import BeautifulSoup # beautifulsoup4 package
 from tabulate import tabulate # tabulate package
@@ -357,7 +358,7 @@ class KHAlbum():
             A cover list as KHCover objects
         """
         # Relevant covers are hosted on "vgmsite"
-        covers = [KHCover(anchor['href']) for anchor in self.album.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+        covers = [KHCover(requote_uri(anchor['href'])) for anchor in self.album.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
         return covers
 
     def get_songlist(self):
@@ -374,7 +375,7 @@ class KHAlbum():
         # Search song attributes within each relevant row of the song list table
         for row in self.songlist('tr')[1:-1]:
             attr = OrderedDict()
-            url = row.find('a')['href']
+            url = requote_uri(row.find('a')['href'])
             cells = row.find_all('td')
             for index, header in enumerate(self.headers):
                 if not header:
@@ -418,7 +419,7 @@ class KHAlbum():
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
         print(f"Number of covers: {len(self.get_covers())}")
 
-    def download(self, output='.', fmt='mp3', start=None, end=None, covers=False, verbose=False):
+    def download(self, output='.', fmt='mp3', start=None, end=None, dlcovers=False, verbose=False):
         """Download the song list of the album with a given format to output directory
 
         Parameters
@@ -426,7 +427,7 @@ class KHAlbum():
             fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
             start (int) : Start download at a given included index in the song list (Default is None) [optional]
             end (int) : End download at a given included index in the song list (Default is None) [optional]
-            covers (boolean) : Download covers (Default is False) [optional]
+            dlcovers (boolean) : Download covers (Default is False) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
@@ -455,7 +456,7 @@ class KHAlbum():
             raise ValueError(f"The start index '{start}' is higher than the end index '{end}'")
 
         # Download covers of the album
-        if covers:
+        if dlcovers:
             for index, cover in enumerate(covers):
                 print(f"Downloading cover [{index+1}/{len(covers)}]...")
                 total_time_elapsed += cover.download(output, verbose)
