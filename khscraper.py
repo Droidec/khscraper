@@ -51,11 +51,26 @@ def get_html_from_url(url):
         The HTML document as a string
     """
 
-    fp = urlopen(url)
-    html = fp.read().decode("utf8")
-    fp.close()
+    resp = urlopen(url)
+    html = resp.read().decode("utf8")
+    resp.close()
 
     return html
+
+def strfdelta(tdelta, fmt):
+    """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
+
+    Parameters
+        tdelta (timedelta object) : timedelta object to format
+        fmt (str) : String to format
+
+    Return
+        A formatted timedelta object as a string
+    """
+    data = {"days": tdelta.days}
+    data["hours"], rem = divmod(tdelta.seconds, 3600)
+    data["min"], data["sec"] = divmod(rem, 60)
+    return fmt.format(**data)
 
 def query_yes_no(question, default='yes'):
         """Prompt user for a boolean choice
@@ -89,10 +104,10 @@ def query_yes_no(question, default='yes'):
             choice = input().lower()
             if default is not None and choice == '':
                 return valid[default]
-            elif choice in valid:
+            if choice in valid:
                 return valid[choice]
 
-class PBar(object):
+class PBar():
     """PBar describe a progress bar
 
     Attributes
@@ -188,7 +203,7 @@ class KHSong(PBar):
         Return
             Song attributes values as a list
         """
-        return [value for value in self.attr.values()]
+        return list(self.attr.values())
 
     def get_download_links(self):
         """Get song download links
@@ -237,7 +252,7 @@ class KHSong(PBar):
 
         raise ValueError(f"{fmt.upper()} format not found for '{self.attr['song name']}' song")
 
-class KHAlbum(object):
+class KHAlbum():
     """KHAlbum describe a KHinsider album content
 
     Attributes
@@ -309,21 +324,6 @@ class KHAlbum(object):
 
         return (headers, songlist, footers)
 
-    def __strfdelta(self, tdelta, fmt):
-        """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
-
-        Parameters
-            tdelta (timedelta object) : timedelta object to format
-            fmt (str) : String to format
-
-        Return
-            A formatted timedelta object as a string
-        """
-        d = {"days": tdelta.days}
-        d["hours"], rem = divmod(tdelta.seconds, 3600)
-        d["min"], d["sec"] = divmod(rem, 60)
-        return fmt.format(**d)
-
     def get_name(self):
         """Get the album name
 
@@ -372,10 +372,10 @@ class KHAlbum(object):
         songlist = []
 
         # Search song attributes within each relevant row of the song list table
-        for tr in self.songlist('tr')[1:-1]:
+        for row in self.songlist('tr')[1:-1]:
             attr = OrderedDict()
-            url = tr.find('a')['href']
-            cells = tr.find_all('td')
+            url = row.find('a')['href']
+            cells = row.find_all('td')
             for index, header in enumerate(self.headers):
                 if not header:
                     continue # Skip unrelevant columns
@@ -395,7 +395,6 @@ class KHAlbum(object):
             None
         """
         result = []
-        covers = self.get_covers()
         songlist = self.get_songlist()
         tot_duration = timedelta()
 
@@ -414,7 +413,7 @@ class KHAlbum(object):
         print(tabulate(result, headers, tablefmt='presto'))
 
         # We could retrieve the total duration in the footer, but we want to pretify it easily
-        print(f"\nTotal duration: {self.__strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
+        print(f"\nTotal duration: {strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
         for index, fmt in enumerate(self.get_available_formats()):
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
         print(f"Number of covers: {len(self.get_covers())}")
@@ -477,7 +476,7 @@ class KHAlbum(object):
                 print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
             total_time_elapsed += song.download(output, fmt, verbose)
 
-        print(f"Total time elapsed:" + self.__strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
+        print("Total time elapsed:" + strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
     # Parse arguments

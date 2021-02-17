@@ -9,6 +9,7 @@ By default, khinsider has disabled the all-in-one download feature. This program
 Python dependencies:
 
 - [python3](https://www.python.org/) >= 3.6 : Use python3 instead of python2
+- [requests](https://pypi.org/project/requests/) >= 2.25.1 : To download [khinsider](http://downloads.khinsider.com/) content
 - [progressbar2](https://pypi.org/project/progressbar2/) >= 3.53.1 : To display a progress bar for each download
 - [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) >= 4.9.3 : To scrape [khinsider](http://downloads.khinsider.com/) informations
 - [tabulate](https://pypi.org/project/tabulate/) >= 0.8.7 : To pretty-print song list
@@ -48,7 +49,7 @@ album.get_songlist() # List of KHSong objects
 album.print()
 
 # Download album song list
-album.download([output=], [fmt=] [start=] [end=] [covers=] [verbose=])
+album.download([output=], [fmt=], [start=], [end=], [covers=], [verbose=])
 ```
 
 # Author(s)
