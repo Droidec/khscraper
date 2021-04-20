@@ -82,6 +82,9 @@ def query_yes_no(question, default='yes'):
 
         Return
             A boolean representing user choice
+
+        Raise
+            ValueError if the default answer is invalid
         """
 
         valid = {
@@ -444,7 +447,7 @@ class KHAlbum():
 
         # Check consistency
         if not os.path.isdir(output):
-            raise ValueError(f"'{output}' is not a directory")
+            raise ValueError(f"'{output}' is not a valid directory")
 
         if start and (start < 0 or start > len(songlist)):
             raise ValueError(f"The start index '{start}' is invalid")
