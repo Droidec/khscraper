@@ -5,6 +5,9 @@ Version 2.1.0
 -------------
 - Add the possibility to download the album song list to a given start/end included index
 - Add the possibility to download covers
+- Add the possibility to set an inactivity timeout
+- Add the possibility to set chunk size for covers/songs download
+- Replace urllib module with requests module for covers/songs download
 - Improve source code with pylint
 - Fix a bug with lower/uppercase download format
 - Fix URL bad characters

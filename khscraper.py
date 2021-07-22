@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+khinsider scraping tool
+"""
 #
 # Copyright (c) 2019-2021, Droidec (Marc G.)
 # All rights reserved.
@@ -31,38 +34,36 @@
 import re
 import os
 import sys
-import argparse
 from datetime import timedelta
 from collections import OrderedDict
 from urllib.parse import urljoin, unquote
-from urllib.request import urlopen, urlretrieve
+from argparse import ArgumentParser, RawTextHelpFormatter
 
+from requests import get as reqget # requests package
 from requests.utils import requote_uri # requests package
 from progressbar import DataTransferBar # progressbar2 package
 from bs4 import BeautifulSoup # beautifulsoup4 package
 from tabulate import tabulate # tabulate package
 
-def get_html_from_url(url):
+def get_html_from_url(url, timeout=None):
     """Get HTML document from URL
 
     Parameters
         url (str) : URL to look for
+        timeout (float) : Inactivity timeout in seconds
 
     Return
         The HTML document as a string
     """
 
-    resp = urlopen(url)
-    html = resp.read().decode("utf8")
-    resp.close()
-
-    return html
+    resp = reqget(url, timeout=timeout)
+    return resp.text
 
 def strfdelta(tdelta, fmt):
     """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
 
     Parameters
-        tdelta (timedelta object) : timedelta object to format
+        tdelta (datetime.timedelta) : timedelta object to format
         fmt (str) : String to format
 
     Return
@@ -74,45 +75,45 @@ def strfdelta(tdelta, fmt):
     return fmt.format(**data)
 
 def query_yes_no(question, default='yes'):
-        """Prompt user for a boolean choice
+    """Prompt user for a boolean choice
 
-        Parameters
-            question (str) : Question to ask to user
-            default (str) : Default answer (Default is 'yes') [optional]
+    Parameters
+        question (str) : Question to ask to user
+        default (str) : Default answer (Default is 'yes') [optional]
 
-        Return
-            A boolean representing user choice
+    Return
+        A boolean representing user choice
 
-        Raise
-            ValueError if the default answer is invalid
-        """
+    Raise
+        ValueError if the default answer is invalid
+    """
 
-        valid = {
-            'yes': True,
-            'ye': True,
-            'y': True,
-            'no': False,
-            'n': False
-        }
-        if default is None:
-            prompt = " [y/n] "
-        elif default == 'yes':
-            prompt = " [Y/n] "
-        elif default == 'no':
-            prompt = " [y/N] "
-        else:
-            raise ValueError(f"Invalid default value: '{default}'")
+    valid = {
+        'yes': True,
+        'ye': True,
+        'y': True,
+        'no': False,
+        'n': False
+    }
+    if default is None:
+        prompt = " [y/n] "
+    elif default == 'yes':
+        prompt = " [Y/n] "
+    elif default == 'no':
+        prompt = " [y/N] "
+    else:
+        raise ValueError(f"Invalid default value: '{default}'")
 
-        while True:
-            sys.stdout.write(question + prompt)
-            choice = input().lower()
-            if default is not None and choice == '':
-                return valid[default]
-            if choice in valid:
-                return valid[choice]
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        if choice in valid:
+            return valid[choice]
 
-class PBar():
-    """PBar describe a progress bar
+class KHFile():
+    """KHFile defines utilities to download KHinsider files
 
     Attributes
         None
@@ -121,8 +122,8 @@ class PBar():
         """KHFile init"""
         self.pbar = None
 
-    def update_progress_bar(self, count, block_size, total_size):
-        """Initialize/Update progress bar (Callback function)
+    def __update_progress_bar(self, count, block_size, total_size):
+        """Initialize/Update progress bar
 
         Parameters
             count (int) : Block number
@@ -141,7 +142,39 @@ class PBar():
         else:
             self.pbar.finish()
 
-class KHCover(PBar):
+    def download_file(self, url, file, timeout=None, chunk_size=1024):
+        """Download a file at a given URL & update progress bar
+
+        Parameters
+            url (str) : URL to look for
+            file (str) : Targeted path and name of the file
+            timeout (float) : Inactivity timeout in seconds (Default is None) [optional]
+            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
+
+        Return
+            The time elapsed to download file as a timedelta object
+        """
+        with reqget(url, timeout=timeout, stream=True) as resp:
+            # Retrieve file size
+            file_size = int(resp.headers['Content-Length'].strip())
+
+            with open(file, 'wb') as sav:
+                index = 0
+                for index, chunk in enumerate(resp.iter_content(chunk_size)):
+                    # Write chunk to file & update progress bar
+                    sav.write(chunk)
+                    self.__update_progress_bar(index, chunk_size, file_size)
+
+                # Finish progress bar
+                self.__update_progress_bar(index+1, chunk_size, file_size)
+
+        # Reset progress bar
+        time_elapsed = self.pbar.data()['time_elapsed']
+        self.pbar = None
+
+        return time_elapsed
+
+class KHCover(KHFile):
     """KHCover describe a KHinsider cover
 
     Attributes
@@ -149,7 +182,11 @@ class KHCover(PBar):
     """
 
     def __init__(self, url):
-        """KHCover init"""
+        """KHCover init
+
+        Raise
+            ValueError if the URL is not valid
+        """
         super().__init__()
 
         if not url.startswith("https://vgmsite.com/soundtracks/"):
@@ -157,11 +194,13 @@ class KHCover(PBar):
 
         self.url = url
 
-    def download(self, output='.', verbose=False):
+    def download(self, output='.', timeout=None, chunk_size=1024, verbose=False):
         """Download a cover to output directory
 
         Parameters
             output (str) : Output directory (Default is execution directory) [optional]
+            timeout (float) : Inactivity timeout in seconds [optional]
+            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
@@ -172,15 +211,9 @@ class KHCover(PBar):
 
         # Download cover to output directory
         file = os.path.basename(unquote(self.url))
-        urlretrieve(self.url, os.path.join(output, file), reporthook=self.update_progress_bar)
-        time_elasped = self.pbar.data()['time_elapsed']
+        return self.download_file(self.url, os.path.join(output, file), timeout, chunk_size)
 
-        # Reset progress bar
-        self.pbar = None
-
-        return time_elasped
-
-class KHSong(PBar):
+class KHSong(KHFile):
     """KHSong describe a KHinsider song
 
     Attributes
@@ -189,7 +222,11 @@ class KHSong(PBar):
     """
 
     def __init__(self, url, attr):
-        """KHSong init"""
+        """KHSong init
+
+        Raise
+            ValueError if the URL is not valid
+        """
         super().__init__()
 
         if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
@@ -197,6 +234,22 @@ class KHSong(PBar):
 
         self.url = url
         self.attr = attr
+
+    def __get_download_links(self, timeout=None):
+        """Get song download links for each available format
+
+        Parameters
+            timeout (float) : Inactivity timeout in seconds [optional]
+
+        Return
+            A list of strings representing download links
+        """
+        html = get_html_from_url(self.url, timeout=timeout)
+        soup = BeautifulSoup(html, 'html.parser')
+
+        # Relevant download links are hosted on "vgmsite"
+        links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+        return links
 
     def get_attr_values(self):
         """Get song attributes
@@ -209,35 +262,23 @@ class KHSong(PBar):
         """
         return list(self.attr.values())
 
-    def get_download_links(self):
-        """Get song download links
-
-        Parameters
-            None
-
-        Return
-            A list of strings representing download links
-        """
-        html = get_html_from_url(self.url)
-        soup = BeautifulSoup(html, 'html.parser')
-
-        # Relevant download links are hosted on "vgmsite"
-        links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
-
-        return links
-
-    def download(self, output='.', fmt='mp3', verbose=False):
+    def download(self, output='.', fmt='mp3', timeout=None, chunk_size=1024, verbose=False):
         """Download a song with a given format to output directory
 
         Parameters
             output (str) : Output directory (Default is execution directory) [optional]
             fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            timeout (float) : Inactivity timeout in seconds [optional]
+            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
         Return
             The time elapsed to download song as a timedelta object
+
+        Raise
+            ValueError if the requested format is not available
         """
-        links = self.get_download_links()
+        links = self.__get_download_links(timeout=timeout)
 
         for link in links:
             if os.path.splitext(link)[1][1:] == fmt:
@@ -246,13 +287,7 @@ class KHSong(PBar):
 
                 # Download song with given format to output directory
                 file = os.path.basename(unquote(link))
-                urlretrieve(link, os.path.join(output, file), reporthook=self.update_progress_bar)
-                time_elasped = self.pbar.data()['time_elapsed']
-
-                # Reset progress bar
-                self.pbar = None
-
-                return time_elasped
+                return self.download_file(link, os.path.join(output, file), timeout, chunk_size)
 
         raise ValueError(f"{fmt.upper()} format not found for '{self.attr['song name']}' song")
 
@@ -293,12 +328,12 @@ class KHAlbum():
         html = get_html_from_url(self.url)
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Relevant album informations are in a div tag 'EchoTopic'
-        album = soup.find(id='EchoTopic')
-        if album is None:
+        # Relevant album content are in a div tag 'EchoTopic'
+        content = soup.find(id='EchoTopic')
+        if content is None:
             raise ValueError("The album has no content!")
 
-        return album
+        return content
 
     def __get_songlist_content(self):
         """Get song list content
@@ -422,12 +457,14 @@ class KHAlbum():
             print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
         print(f"Number of covers: {len(self.get_covers())}")
 
-    def download(self, output='.', fmt='mp3', start=None, end=None, dlcovers=False, verbose=False):
+    def download(self, output='.', fmt='mp3', timeout=None, chunk_size=1024, start=None, end=None, dlcovers=False, verbose=False):
         """Download the song list of the album with a given format to output directory
 
         Parameters
             output (str) : Output directory (Default is execution directory) [optional]
             fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            timeout (float) : Inactivity timeout in seconds (Default is None) [optional]
+            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
             start (int) : Start download at a given included index in the song list (Default is None) [optional]
             end (int) : End download at a given included index in the song list (Default is None) [optional]
             dlcovers (boolean) : Download covers (Default is False) [optional]
@@ -462,7 +499,7 @@ class KHAlbum():
         if dlcovers:
             for index, cover in enumerate(covers):
                 print(f"Downloading cover [{index+1}/{len(covers)}]...")
-                total_time_elapsed += cover.download(output, verbose)
+                total_time_elapsed += cover.download(output, timeout, chunk_size, verbose)
 
         # Download the song list of the album
         for index, song in enumerate(songlist):
@@ -478,15 +515,18 @@ class KHAlbum():
                 print(f"Downloading '{song.attr['song name']}' [{index+1}/{end}]...")
             else:
                 print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
-            total_time_elapsed += song.download(output, fmt, verbose)
+            total_time_elapsed += song.download(output, fmt, timeout, chunk_size, verbose)
 
         print("Total time elapsed:" + strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Download song list from a KHinsider album URL")
-    parser.add_argument('-f', '--format', default='mp3', help="Choose download format (Default is MP3)")
+    parser = ArgumentParser(description="Download song list from a KHinsider album URL", formatter_class=RawTextHelpFormatter)
     parser.add_argument('-o', '--output', default='.', help="Choose output directory (Default is execution directory)")
+    parser.add_argument('-f', '--format', default='mp3', help="Choose download format (Default is MP3)")
+    parser.add_argument('-t', '--timeout', default=None, type=float, help="Set inactivity timeout in seconds (Default is None)")
+    parser.add_argument('--chunk', default=1024, type=int, metavar='CHUNK_SIZE',
+        help="Set chunk size in bytes for covers/songs download.\nDo not touch if you don't know what you're doing (Default is 1024)")
     parser.add_argument('--start', default=None, type=int, help="Choose start index in the album song list (Default is None)")
     parser.add_argument('--end', default=None, type=int, help="Choose end index in the album song list (Default is None)")
     parser.add_argument('-c', '--covers', default=False, action="store_true", help="Download covers (Default is False)")
@@ -504,6 +544,9 @@ if __name__ == "__main__":
     album.print()
     print(f"\nChosen format: {args.format.upper()}")
     print(f"Chosen directory: {args.output}")
+    if args.timeout:
+        print(f"Chosen timeout: {args.timeout} sec.")
+    print(f"Chosen chunk size: {args.chunk} bytes")
     if args.start:
         print(f"Chosen start index: {args.start}")
     if args.end:
@@ -514,4 +557,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Download album song list
-    album.download(args.output, args.format.lower(), args.start, args.end, args.covers, args.verbose)
+    album.download(args.output, args.format.lower(), args.timeout, args.chunk, args.start, args.end, args.covers, args.verbose)

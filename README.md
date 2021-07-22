@@ -26,8 +26,10 @@ python3 khscraper.py https://downloads.khinsider.com/game-soundtracks/album/king
 
 Available options:
 - Display help (-h, --help)
-- Choose download format (MP3, FLAC, OGG, ...) (-f, --format)
 - Choose output directory (-o, --output)
+- Choose download format (MP3, FLAC, OGG, ...) (-f, --format)
+- Set inactivity timeout in seconds (-t, --timeout)
+- Set chunk size in bytes for covers/songs download (--chunk)
 - Choose start index in the album song list (--start)
 - Choose end index in the album song list (--end)
 - Download covers (-c, --covers)
@@ -49,7 +51,7 @@ album.get_songlist() # List of KHSong objects
 album.print()
 
 # Download album song list
-album.download([output=], [fmt=], [start=], [end=], [dlcovers=], [verbose=])
+album.download([output=], [fmt=], [timeout=], [chunk_size=], [start=], [end=], [dlcovers=], [verbose=])
 ```
 
 # Author(s)
