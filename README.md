@@ -4,7 +4,7 @@
 It allows you to download all songs hosted on khinsider for a given album URL.
 By default, khinsider has disabled the all-in-one download feature. This program attempts to re-automate the process.
 
-# Dependencies
+## Dependencies
 
 Python dependencies:
 
@@ -14,7 +14,7 @@ Python dependencies:
 - [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) >= 4.9.3 : To scrape [khinsider](http://downloads.khinsider.com/) informations
 - [tabulate](https://pypi.org/project/tabulate/) >= 0.8.7 : To pretty-print song list
 
-# Usage
+## Usage
 
 From the command line, simply call the python script as follows:
 
@@ -54,10 +54,10 @@ album.print()
 album.download([output=], [fmt=], [timeout=], [chunk_size=], [start=], [end=], [dlcovers=], [verbose=])
 ```
 
-# Author(s)
+## Author
 
 Droidec (Marc G.) <https://github.com/Droidec>
 
-# Licence
+## Licence
 
 `khscraper` is released under BSD-3 clause licence. See the LICENCE file in this source distribution for more information.
