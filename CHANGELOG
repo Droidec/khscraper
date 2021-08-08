@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+Version 2.1.1
+-------------
+- Fix LICENCE & README
+
 Version 2.1.0
 -------------
 - Add the possibility to download the album song list to a given start/end included index
