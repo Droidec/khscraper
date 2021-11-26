@@ -60,4 +60,5 @@ Droidec (Marc G.) <https://github.com/Droidec>
 
 ## Licence
 
-`khscraper` is released under BSD-3 clause licence. See the LICENCE file in this source distribution for more information.
+`khscraper` is released under BSD-3 clause licence.  
+See the LICENCE file in this source distribution for more information.
