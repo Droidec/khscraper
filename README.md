@@ -56,7 +56,7 @@ album.download([output=], [fmt=], [timeout=], [chunk_size=], [start=], [end=], [
 
 ## Author
 
-Droidec (Marc G.) <https://github.com/Droidec>
+Marc GIANNETTI \<mgtti.pro@gmail.com\>
 
 ## Licence
 
