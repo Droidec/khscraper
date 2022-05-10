@@ -2,6 +2,11 @@
 
 This CHANGELOG indicates the different versions of the `khscrapper` tool.
 
+## Version 2.1.3
+
+- Adapt source code to HTML changes
+- Fix README
+
 ## Version 2.1.2
 
 - Rewrite CHANGELOG & TODO in markdown
