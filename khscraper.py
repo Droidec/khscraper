@@ -328,8 +328,8 @@ class KHAlbum():
         html = get_html_from_url(self.url)
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Relevant album content are in a div tag 'EchoTopic'
-        content = soup.find(id='EchoTopic')
+        # Relevant album content are in a div tag 'PageContent'
+        content = soup.find(id='pageContent')
         if content is None:
             raise ValueError("The album has no content!")
 
