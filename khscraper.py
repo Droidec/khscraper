@@ -383,7 +383,7 @@ class KHAlbum():
         Return
             A list of strings representing available formats (mp3, flac, ogg, ...)
         """
-        formats = self.headers[self.headers.index('Duration')+1:-1]
+        formats = self.headers[self.headers.index('Duration')+1:-2]
         return [fmt.lower() for fmt in formats]
 
     def get_covers(self):
