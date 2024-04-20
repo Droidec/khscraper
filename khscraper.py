@@ -189,7 +189,7 @@ class KHCover(KHFile):
         """
         super().__init__()
 
-        if not url.startswith("https://vgmsite.com/soundtracks/"):
+        if not url.startswith("https://vgmsite.com/soundtracks/") and not not url.startswith("https://dl.vgmdownloads.com/soundtracks/"):
             raise ValueError(f"'{url}' is not a valid KHinsider cover URL")
 
         self.url = url
@@ -247,8 +247,12 @@ class KHSong(KHFile):
         html = get_html_from_url(self.url, timeout=timeout)
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Relevant download links are hosted on "vgmsite"
+        # Relevant download links are hosted on "vgmsite" or "vgmdownloads"
         links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+
+        if not links:
+            links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://dl.vgmdownloads.com'))]
+
         return links
 
     def get_attr_values(self):
@@ -395,8 +399,12 @@ class KHAlbum():
         Return
             A cover list as KHCover objects
         """
-        # Relevant covers are hosted on "vgmsite"
+        # Relevant covers are hosted on "vgmsite" or "vgmdownloads"
         covers = [KHCover(requote_uri(anchor['href'])) for anchor in self.album.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+
+        if not covers:
+            covers = [KHCover(requote_uri(anchor['href'])) for anchor in self.album.find_all('a', href=re.compile(r'^https://dl.vgmdownloads.com'))]
+
         return covers
 
     def get_songlist(self):
