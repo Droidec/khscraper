@@ -34,58 +34,46 @@ khinsider scraping tool
 import re
 import os
 import sys
-from datetime import timedelta
-from collections import OrderedDict
-from urllib.parse import urljoin, unquote
+
 from argparse import ArgumentParser, RawTextHelpFormatter
+from datetime import timedelta
+from urllib.parse import urljoin, unquote
 
-from requests import get as reqget # requests package
-from requests.utils import requote_uri # requests package
-from progressbar import DataTransferBar # progressbar2 package
-from bs4 import BeautifulSoup # beautifulsoup4 package
-from tabulate import tabulate # tabulate package
+from bs4 import BeautifulSoup, Tag
+from progressbar import DataTransferBar
+from requests import get as reqget
+from requests.utils import requote_uri
+from tabulate import tabulate
 
-def get_html_from_url(url, timeout=None):
-    """Get HTML document from URL
 
-    Parameters
-        url (str) : URL to look for
-        timeout (float) : Inactivity timeout in seconds
+def strfdelta(tdelta:timedelta, fmt:str) -> str:
+    """Formats a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
 
-    Return
-        The HTML document as a string
-    """
+    Arguments:
+        tdelta (timedelta): The timedelta object to format
+        fmt (str): The string to use
 
-    resp = reqget(url, timeout=timeout)
-    return resp.text
-
-def strfdelta(tdelta, fmt):
-    """Format a timedelta object with 'days', 'hours', 'min' and 'sec' placeholders
-
-    Parameters
-        tdelta (datetime.timedelta) : timedelta object to format
-        fmt (str) : String to format
-
-    Return
+    Returns:
         A formatted timedelta object as a string
     """
-    data = {"days": tdelta.days}
-    data["hours"], rem = divmod(tdelta.seconds, 3600)
-    data["min"], data["sec"] = divmod(rem, 60)
+    data = {'days': tdelta.days}
+    data['hours'], rem = divmod(tdelta.seconds, 3600)
+    data['min'], data['sec'] = divmod(rem, 60)
+
     return fmt.format(**data)
 
-def query_yes_no(question, default='yes'):
-    """Prompt user for a boolean choice
+def query_yes_no(question:str, default:str='yes') -> bool:
+    """Prompts the user for a boolean choice
 
-    Parameters
-        question (str) : Question to ask to user
-        default (str) : Default answer (Default is 'yes') [optional]
+    Arguments:
+        question (str): The question to ask to the user
+        default (str): The default answer (Default is 'yes') [optional]
 
-    Return
+    Raises:
+        ValueError: The default answer is invalid
+
+    Returns
         A boolean representing user choice
-
-    Raise
-        ValueError if the default answer is invalid
     """
 
     valid = {
@@ -95,14 +83,15 @@ def query_yes_no(question, default='yes'):
         'no': False,
         'n': False
     }
+
     if default is None:
-        prompt = " [y/n] "
+        prompt = ' [y/n] '
     elif default == 'yes':
-        prompt = " [Y/n] "
+        prompt = ' [Y/n] '
     elif default == 'no':
-        prompt = " [y/N] "
+        prompt = ' [y/N] '
     else:
-        raise ValueError(f"Invalid default value: '{default}'")
+        raise ValueError(f'Invalid default value: "{default}"')
 
     while True:
         sys.stdout.write(question + prompt)
@@ -113,25 +102,23 @@ def query_yes_no(question, default='yes'):
             return valid[choice]
 
 class KHFile():
-    """KHFile defines utilities to download KHinsider files
+    """The KHFile class defines utilities to download KHinsider files
 
-    Attributes
-        None
+    Attributes:
+        pbar (DataTransferBar): The file progress bar
     """
-    def __init__(self):
-        """KHFile init"""
+
+    def __init__(self) -> None:
+        """KHFile initializer"""
         self.pbar = None
 
-    def __update_progress_bar(self, count, block_size, total_size):
-        """Initialize/Update progress bar
+    def __update_progress_bar(self, count:int, block_size:int, total_size:int) -> None:
+        """Initializes and updates the progress bar
 
-        Parameters
-            count (int) : Block number
-            block_size (int) : Maximum size blocks that are read in
-            total_size (int) : Total size of the download
-
-        Return
-            None
+        Arguments:
+            count (int): The block number
+            block_size (int): The maximum size blocks that are read in
+            total_size (int): The total size of the download
         """
         if self.pbar is None:
             self.pbar = DataTransferBar(max_value=total_size)
@@ -142,17 +129,17 @@ class KHFile():
         else:
             self.pbar.finish()
 
-    def download_file(self, url, file, timeout=None, chunk_size=1024):
-        """Download a file at a given URL & update progress bar
+    def download_file(self, url:str, file:str, timeout:float=None, chunk_size:int=1024) -> timedelta:
+        """Downloads the file at a given URL and updates its progress bar
 
-        Parameters
-            url (str) : URL to look for
-            file (str) : Targeted path and name of the file
-            timeout (float) : Inactivity timeout in seconds (Default is None) [optional]
-            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
+        Arguments:
+            url (str): The URL to look for
+            file (str) : The targeted path and name of the file
+            timeout (float) : The inactivity timeout in seconds (Default is None) [optional]
+            chunk_size (int) : The number of bytes to read into memory (Default is 1024) [optional]
 
-        Return
-            The time elapsed to download file as a timedelta object
+        Returns:
+            The time elapsed to download the file as a timedelta object
         """
         with reqget(url, timeout=timeout, stream=True) as resp:
             # Retrieve file size
@@ -160,13 +147,14 @@ class KHFile():
 
             with open(file, 'wb') as sav:
                 index = 0
+
                 for index, chunk in enumerate(resp.iter_content(chunk_size)):
                     # Write chunk to file & update progress bar
                     sav.write(chunk)
                     self.__update_progress_bar(index, chunk_size, file_size)
 
                 # Finish progress bar
-                self.__update_progress_bar(index+1, chunk_size, file_size)
+                self.__update_progress_bar(index + 1, chunk_size, file_size)
 
         # Reset progress bar
         time_elapsed = self.pbar.data()['time_elapsed']
@@ -175,342 +163,291 @@ class KHFile():
         return time_elapsed
 
 class KHCover(KHFile):
-    """KHCover describe a KHinsider cover
+    """The KHCover class describes a KHinsider cover
 
-    Attributes
-        url (str) : KHinsider cover URL
+    Attributes:
+        url (str): The URL of the KHinsider cover
     """
 
     def __init__(self, url):
-        """KHCover init
-
-        Raise
-            ValueError if the URL is not valid
-        """
+        """KHCover initializer"""
         super().__init__()
-
-        if not url.startswith("https://vgmsite.com/soundtracks/") and not not url.startswith("https://dl.vgmdownloads.com/soundtracks/"):
-            raise ValueError(f"'{url}' is not a valid KHinsider cover URL")
-
         self.url = url
 
-    def download(self, output='.', timeout=None, chunk_size=1024, verbose=False):
-        """Download a cover to output directory
+    def download(self, output:str='.', timeout:float=None, chunk_size:int=1024, verbose:bool=False) -> timedelta:
+        """Downloads the cover to an output directory
 
-        Parameters
+        Arguments:
             output (str) : Output directory (Default is execution directory) [optional]
             timeout (float) : Inactivity timeout in seconds [optional]
             chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
             verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
 
-        Return
-            The time elapsed to download cover as a timedelta object
+        Returns:
+            The time elapsed to download the cover as a timedelta object
         """
         if verbose:
-            print("Link found: " + self.url)
+            print('Cover link: ' + self.url)
 
         # Download cover to output directory
         file = os.path.basename(unquote(self.url))
         return self.download_file(self.url, os.path.join(output, file), timeout, chunk_size)
 
 class KHSong(KHFile):
-    """KHSong describe a KHinsider song
+    """The KHSong class describes a KHinsider song
 
-    Attributes
-        url (str) : KHinsider song URL
-        attr (OrderDict) : Song attributes (name, duration, formats ...)
+    Attributes:
+        url (str): The URL of the KHinsider song
+        attr (dict[str,str]): The song attributes (name, duration, formats ...)
     """
 
-    def __init__(self, url, attr):
-        """KHSong init
-
-        Raise
-            ValueError if the URL is not valid
-        """
+    def __init__(self, url:str, attr:dict[str,str]) -> None:
+        """KHSong initializer"""
         super().__init__()
-
-        if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
-            raise ValueError(f"'{url}' is not a valid KHinsider song URL")
-
         self.url = url
         self.attr = attr
 
-    def __get_download_links(self, timeout=None):
-        """Get song download links for each available format
+    def __get_download_links(self, timeout:float=None) -> list[str]:
+        """Gets the song download links for each available format
 
-        Parameters
-            timeout (float) : Inactivity timeout in seconds [optional]
+        Arguments:
+            timeout (float): The inactivity timeout in seconds [optional]
 
-        Return
+        Returns:
             A list of strings representing download links
         """
-        html = get_html_from_url(self.url, timeout=timeout)
+        html = reqget(self.url, timeout=timeout).text
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Relevant download links are hosted on "vgmsite" or "vgmdownloads"
-        links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+        # Relevants links have a nested "Click here [...]" span
+        return [span.parent['href'] for span in soup.find_all('span') if span.parent.name == 'a' and 'Click here' in span.text]
 
-        if not links:
-            links = [anchor['href'] for anchor in soup.find_all('a', href=re.compile(r'^https://dl.vgmdownloads.com'))]
+    def get_attr_values(self) -> list[str]:
+        """Gets the song attribute values
 
-        return links
-
-    def get_attr_values(self):
-        """Get song attributes
-
-        Parameters
-            None
-
-        Return
-            Song attributes values as a list
+        Returns:
+            The song attribute values as a list
         """
         return list(self.attr.values())
 
-    def download(self, output='.', fmt='mp3', timeout=None, chunk_size=1024, verbose=False):
-        """Download a song with a given format to output directory
+    def download(self, output:str='.', fmt:str='mp3', timeout:float=None, chunk_size:int=1024, verbose:bool=False) -> timedelta:
+        """Downloads the song with a given format to an output directory
 
-        Parameters
-            output (str) : Output directory (Default is execution directory) [optional]
-            fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
-            timeout (float) : Inactivity timeout in seconds [optional]
-            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
-            verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
+        Arguments:
+            output (str): The output directory (Default is execution directory) [optional]
+            fmt (str): The download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            timeout (float): The inactivity timeout in seconds [optional]
+            chunk_size (int): The number of bytes to read into memory (Default is 1024) [optional]
+            verbose (bool): The verbosity boolean to display more informations (Default is 'False') [optional]
 
-        Return
-            The time elapsed to download song as a timedelta object
+        Raises:
+            ValueError: The requested format is not available
 
-        Raise
-            ValueError if the requested format is not available
+        Returns:
+            The time elapsed to download the song as a timedelta object
         """
         links = self.__get_download_links(timeout=timeout)
 
         for link in links:
             if os.path.splitext(link)[1][1:] == fmt:
                 if verbose:
-                    print("Link found: " + link)
+                    print('Song link: ' + link)
 
                 # Download song with given format to output directory
                 file = os.path.basename(unquote(link))
                 return self.download_file(link, os.path.join(output, file), timeout, chunk_size)
 
-        raise ValueError(f"{fmt.upper()} format not found for '{self.attr['song name']}' song")
+        raise ValueError(f'{fmt.upper()} format not found for "{self.attr['song name']}" song')
 
 class KHAlbum():
-    """KHAlbum describe a KHinsider album content
+    """The KHAlbum class describes a KHinsider album
 
-    Attributes
-        url (str) : KHinsider album URL
+    Attributes:
+        url (str): URL of the KHinsider album
+        album (Tag): Navigable HTML album content
+        headers (list[str]): A list of strings representing tracklist headers
+        tracklist (Tag): Navigable HTML tracklist content
+        footers (list[str]): A list of strings representing tracklist footers
     """
 
-    def __init__(self, url):
-        """KHAlbum init
+    def __init__(self, url:str) -> None:
+        """KHAlbum initializer
 
-        Raise
-            ValueError :
-                - If the URL is not valid
-                - If KHinsider album content is not found
+        Arguments:
+            url (str) : The URL of the KHinsider album
+
+        Raises:
+            ValueError: The URL is not valid or an HTML scrape error occurred
         """
-        if not url.startswith("https://downloads.khinsider.com/game-soundtracks/album/"):
-            raise ValueError(f"'{url}' is not a valid KHinsider album URL")
+        if not url.startswith('https://downloads.khinsider.com/game-soundtracks/album/'):
+            raise ValueError(f'"{url}" is not a valid KHinsider album URL')
 
         self.url = url
-        self.album = self.__scrape_album_content()
-        self.headers, self.songlist, self.footers = self.__get_songlist_content()
+        self.album = self.__get_html_content()
+        self.headers, self.tracklist, self.footers = self.__get_tracklist()
 
-    def __scrape_album_content(self):
-        """Scrape album content
+    def __get_html_content(self) -> Tag:
+        """Gets the album HTML content
 
-        Parameters
-            None
+        Returns:
+            A navigable HTML content as a Tag
 
-        Return
-            A soup object representing album content
-
-        Raise
-            ValueError if the album content is not found
+        Raises:
+            ValueError: The album content could not be found
         """
-        html = get_html_from_url(self.url)
+        html = reqget(self.url, timeout=5).text
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Relevant album content are in a div tag 'PageContent'
-        content = soup.find(id='pageContent')
+        # Relevant album content is in a div tag 'PageContent'
+        content = soup.find('div', id='pageContent')
         if content is None:
-            raise ValueError("The album has no content!")
+            raise ValueError('The album content could not be found')
 
         return content
 
-    def __get_songlist_content(self):
-        """Get song list content
+    def __get_tracklist(self) -> tuple[list[str], Tag, list[str]]:
+        """Gets the tracklist of the album
 
-        Parameters
-            None
+        Raises:
+            ValueError: The tracklist content could not be found
 
-        Return
+        Returns:
             A tuple composed of:
-                - A list of strings representing song list headers
-                - A soup object representing song list content
-                - A list of strings representing song list footers
-
-        Raise
-            ValueError if the song list content is not found
+                - A list of strings representing tracklist headers
+                - A navigable tracklist content as a Tag
+                - A list of strings representing tracklist footers
         """
-        # Relevant song list informations are in a table with ID "songlist"
-        songlist = self.album.find('table', id='songlist')
-        if songlist is None:
-            raise ValueError("The album content does not have any song list!")
+        # Relevant tracklist content is in a table with ID 'songlist'
+        tracklist = self.album.find('table', id='songlist')
+        if tracklist is None:
+            raise ValueError('The tracklist content could not be found')
 
         # Change headers to match song attributes indexes
-        headers = [th.get_text(strip=True) for th in songlist.find('tr', id='songlist_header').find_all('th')]
+        headers = [th.get_text(strip=True) for th in tracklist.find('tr', id='songlist_header').find_all('th')]
         headers.insert(headers.index('Song Name')+1, 'Duration')
 
-        footers = [th.get_text(strip=True) for th in songlist.find('tr', id='songlist_footer').find_all('th')]
+        footers = [th.get_text(strip=True) for th in tracklist.find('tr', id='songlist_footer').find_all('th')]
 
-        return (headers, songlist, footers)
+        return (headers, tracklist, footers)
 
-    def get_name(self):
-        """Get the album name
+    def get_name(self) -> str:
+        """Gets the album name
 
-        Parameters
-            None
-
-        Return
-            A string object representing album name
+        Returns:
+            A string representing album name
         """
         return self.album.find('h2').text
 
-    def get_available_formats(self):
-        """Get the song list available formats of the album
+    def get_available_formats(self) -> list[str]:
+        """Gets the available formats of the album
 
-        Parameters
-            None
-
-        Return
+        Returns:
             A list of strings representing available formats (mp3, flac, ogg, ...)
         """
         formats = self.headers[self.headers.index('Duration')+1:-2]
         return [fmt.lower() for fmt in formats]
 
-    def get_covers(self):
-        """Get the album covers
+    def get_covers(self) -> list[KHCover]:
+        """Gets the covers of the album
 
-        Parameters
-            None
-
-        Return
-            A cover list as KHCover objects
+        Returns:
+            A list of KHCover objects
         """
-        # Relevant covers are hosted on "vgmsite" or "vgmdownloads"
-        covers = [KHCover(requote_uri(anchor['href'])) for anchor in self.album.find_all('a', href=re.compile(r'^https://vgmsite.com'))]
+        # Relevant covers are in a div with class 'albumImage'
+        return [KHCover(requote_uri(div.find('a')['href'])) for div in self.album.find_all('div', class_='albumImage')]
 
-        if not covers:
-            covers = [KHCover(requote_uri(anchor['href'])) for anchor in self.album.find_all('a', href=re.compile(r'^https://dl.vgmdownloads.com'))]
+    def get_tracklist(self) -> list[KHSong]:
+        """Gets the tracklist of the album
 
-        return covers
-
-    def get_songlist(self):
-        """Get the song list of the album
-
-        Parameters
-            None
-
-        Return
-            A song list as KHSong objects
+        Returns:
+            A list of KHSong objects
         """
-        songlist = []
+        tracklist = []
 
-        # Search song attributes within each relevant row of the song list table
-        for row in self.songlist('tr')[1:-1]:
-            attr = OrderedDict()
+        # Search song attributes within each relevant row of the tracklist content
+        for row in self.tracklist('tr')[1:-1]:
+            attr = {}
             url = requote_uri(row.find('a')['href'])
             cells = row.find_all('td')
+
             for index, header in enumerate(self.headers):
                 if not header:
                     continue # Skip unrelevant columns
                 attr[header.lower()] = cells[index].text
 
-            songlist.append(KHSong(urljoin(self.url, url), attr))
+            tracklist.append(KHSong(urljoin(self.url, url), attr))
 
-        return songlist
+        return tracklist
 
-    def print(self):
-        """Print the album name, its songlist and misc informations
-
-        Parameters
-            None
-
-        Return
-            None
-        """
+    def print(self) -> None:
+        """Prints the album metadata"""
         result = []
-        songlist = self.get_songlist()
-        tot_duration = timedelta()
+        tracklist = self.get_tracklist()
+        total = timedelta()
 
         # Eliminate empty headers
         headers = [header for header in self.headers if header]
 
-        print(f"{self.get_name()}\n")
+        print(f'{self.get_name()}\n')
 
-        for song in songlist:
+        for song in tracklist:
             result.append(song.get_attr_values())
 
             # Calculate duration in seconds
-            sec = sum(map(lambda x,y : x*int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
-            tot_duration += timedelta(seconds=int(sec))
+            sec = sum(map(lambda x,y : x * int(y), [1,60,3600], reversed(song.attr['duration'].split(':'))))
+            total += timedelta(seconds=int(sec))
 
         print(tabulate(result, headers, tablefmt='presto'))
 
         # We could retrieve the total duration in the footer, but we want to pretify it easily
-        print(f"\nTotal duration: {strfdelta(tot_duration, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}")
+        print(f'\nTotal duration: {strfdelta(total, '{days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)')}')
+
         for index, fmt in enumerate(self.get_available_formats()):
-            print(f"{fmt.upper()} total size: {self.footers[self.footers.index('Total:')+2+index]}")
-        print(f"Number of covers: {len(self.get_covers())}")
+            print(f'{fmt.upper()} total size: {self.footers[self.footers.index('Total:') + 2 + index]}')
 
-    def download(self, output='.', fmt='mp3', timeout=None, chunk_size=1024, start=None, end=None, dlcovers=False, verbose=False):
-        """Download the song list of the album with a given format to output directory
+        print(f'Number of covers: {len(self.get_covers())}')
 
-        Parameters
-            output (str) : Output directory (Default is execution directory) [optional]
-            fmt (str) : Download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
-            timeout (float) : Inactivity timeout in seconds (Default is None) [optional]
-            chunk_size (int) : Number of bytes to read into memory (Default is 1024) [optional]
-            start (int) : Start download at a given included index in the song list (Default is None) [optional]
-            end (int) : End download at a given included index in the song list (Default is None) [optional]
-            dlcovers (boolean) : Download covers (Default is False) [optional]
-            verbose (boolean) : Verbosity boolean to display more informations (Default is 'False') [optional]
+    def download(self, output:str='.', fmt:str='mp3', timeout:float=None, chunk_size:int=1024, start:int=None, end:int=None, dlcovers:bool=False, verbose:bool=False) -> None:
+        """Downloads the tracklist of the album with a given format to an output directory
 
-        Return
-            None
+        Arguments:
+            output (str): The output directory (Default is execution directory) [optional]
+            fmt (str): The download format (mp3, flac, ogg, ...) (Default is mp3) [optional]
+            timeout (float): The inativity timeout in seconds for downloading a cover/song (Default is None) [optional]
+            chunk_size (int): The number of bytes to read into memory (Default is 1024) [optional]
+            start (int): The start download at a given included index in the tracklist (Default is None) [optional]
+            end (int): The end download at a given included index in the tracklist (Default is None) [optional]
+            dlcovers (bool): Download covers or not (Default is False) [optional]
+            verbose (bool): Display more informations or not (Default is 'False') [optional]
 
-        Raise
-            ValueError if:
-                - The output is not a directory
-                - The start or end index(es) are invalid
+        Raises:
+            ValueError: The output is not a directory or the start/end indexes are invalid
         """
         covers = self.get_covers()
-        songlist = self.get_songlist()
-        total_time_elapsed = timedelta()
+        tracklist = self.get_tracklist()
+        total = timedelta()
 
         # Check consistency
         if not os.path.isdir(output):
-            raise ValueError(f"'{output}' is not a valid directory")
+            raise ValueError(f'"{output}" is not a valid directory')
 
-        if start and (start < 0 or start > len(songlist)):
-            raise ValueError(f"The start index '{start}' is invalid")
+        if start and (start < 0 or start > len(tracklist)):
+            raise ValueError(f'The start index "{start}" is invalid')
 
-        if end and (end < 0 or end > len(songlist)):
-            raise ValueError(f"The end index '{end}' is invalid")
+        if end and (end < 0 or end > len(tracklist)):
+            raise ValueError(f'The end index "{end}" is invalid')
 
         if start and end and start > end:
-            raise ValueError(f"The start index '{start}' is higher than the end index '{end}'")
+            raise ValueError(f'The start index "{start}" cannot exceed the end index "{end}"')
 
         # Download covers of the album
         if dlcovers:
             for index, cover in enumerate(covers):
-                print(f"Downloading cover [{index+1}/{len(covers)}]...")
-                total_time_elapsed += cover.download(output, timeout, chunk_size, verbose)
+                print(f'Downloading cover [{index+1}/{len(covers)}]...')
+                total += cover.download(output, timeout, chunk_size, verbose)
 
-        # Download the song list of the album
-        for index, song in enumerate(songlist):
+        # Download the tracklist of the album
+        for index, song in enumerate(tracklist):
             # Skip if below the start index
             if start and index+1 < start:
                 continue
@@ -520,49 +457,52 @@ class KHAlbum():
                 break
 
             if end:
-                print(f"Downloading '{song.attr['song name']}' [{index+1}/{end}]...")
+                print(f'Downloading "{song.attr['song name']}" [{index+1}/{end}]...')
             else:
-                print(f"Downloading '{song.attr['song name']}' [{index+1}/{len(songlist)}]...")
-            total_time_elapsed += song.download(output, fmt, timeout, chunk_size, verbose)
+                print(f'Downloading "{song.attr['song name']}" [{index+1}/{len(tracklist)}]...')
 
-        print("Total time elapsed:" + strfdelta(total_time_elapsed, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
+            total += song.download(output, fmt, timeout, chunk_size, verbose)
+
+        print('Total time elapsed:' + strfdelta(total, ' {days} day(s) {hours} hour(s) {min} min(s) {sec} sec(s)'))
 
 if __name__ == "__main__":
+
     # Parse arguments
-    parser = ArgumentParser(description="Download song list from a KHinsider album URL", formatter_class=RawTextHelpFormatter)
-    parser.add_argument('-o', '--output', default='.', help="Choose output directory (Default is execution directory)")
-    parser.add_argument('-f', '--format', default='mp3', help="Choose download format (Default is MP3)")
-    parser.add_argument('-t', '--timeout', default=None, type=float, help="Set inactivity timeout in seconds (Default is None)")
+    parser = ArgumentParser(description='Download tracklist from a KHinsider album URL', formatter_class=RawTextHelpFormatter)
+    parser.add_argument('-o', '--output', default='.', help='Choose output directory (Default is execution directory)')
+    parser.add_argument('-f', '--format', default='mp3', help='Choose download format (Default is MP3)')
+    parser.add_argument('-t', '--timeout', default=None, type=float, help='Set inactivity timeout in seconds (Default is None)')
     parser.add_argument('--chunk', default=1024, type=int, metavar='CHUNK_SIZE',
         help="Set chunk size in bytes for covers/songs download.\nDo not touch if you don't know what you're doing (Default is 1024)")
-    parser.add_argument('--start', default=None, type=int, help="Choose start index in the album song list (Default is None)")
-    parser.add_argument('--end', default=None, type=int, help="Choose end index in the album song list (Default is None)")
-    parser.add_argument('-c', '--covers', default=False, action="store_true", help="Download covers (Default is False)")
-    parser.add_argument('-v', '--verbose', default=False, action="store_true", help="Enable verbose mode (Default is False)")
-    parser.add_argument('url', help="KHinsider album URL")
+    parser.add_argument('--start', default=None, type=int, help='Choose start index in the album tracklist (Default is None)')
+    parser.add_argument('--end', default=None, type=int, help='Choose end index in the album tracklist (Default is None)')
+    parser.add_argument('-c', '--covers', default=False, action='store_true', help='Download covers (Default is False)')
+    parser.add_argument('-v', '--verbose', default=False, action='store_true', help='Enable verbose mode (Default is False)')
+    parser.add_argument('url', help='KHinsider album URL')
 
     args = parser.parse_args()
     album = KHAlbum(args.url)
 
     # Check consistency
     if args.format.lower() not in album.get_available_formats():
-        raise ValueError(f"{args.format.upper()} not available for '{album.get_name()}' album")
+        raise ValueError(f'{args.format.upper()} not available for "{album.get_name()}" album')
 
     # Print album informations
     album.print()
-    print(f"\nChosen format: {args.format.upper()}")
-    print(f"Chosen directory: {args.output}")
-    if args.timeout:
-        print(f"Chosen timeout: {args.timeout} sec.")
-    print(f"Chosen chunk size: {args.chunk} bytes")
-    if args.start:
-        print(f"Chosen start index: {args.start}")
-    if args.end:
-        print(f"Chosen end index: {args.end}")
-    print(f"Download covers: {args.covers}")
 
-    if not query_yes_no("\nIs this ok ?", 'yes'):
+    print(f'\nChosen format: {args.format.upper()}')
+    print(f'Chosen directory: {args.output}')
+    if args.timeout:
+        print(f'Chosen timeout: {args.timeout} sec.')
+    print(f'Chosen chunk size: {args.chunk} bytes')
+    if args.start:
+        print(f'Chosen start index: {args.start}')
+    if args.end:
+        print(f'Chosen end index: {args.end}')
+    print(f'Download covers: {args.covers}')
+
+    if not query_yes_no('\nIs this ok ?', 'yes'):
         sys.exit(1)
 
-    # Download album song list
+    # Download album tracklist
     album.download(args.output, args.format.lower(), args.timeout, args.chunk, args.start, args.end, args.covers, args.verbose)

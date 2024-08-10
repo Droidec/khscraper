@@ -8,11 +8,11 @@ By default, khinsider has disabled the all-in-one download feature. This program
 
 Python dependencies:
 
-- [python3](https://www.python.org/) >= 3.6 : Use python3 instead of python2
-- [requests](https://pypi.org/project/requests/) >= 2.25.1 : To download [khinsider](http://downloads.khinsider.com/) content
-- [progressbar2](https://pypi.org/project/progressbar2/) >= 3.53.1 : To display a progress bar for each download
-- [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) >= 4.9.3 : To scrape [khinsider](http://downloads.khinsider.com/) informations
-- [tabulate](https://pypi.org/project/tabulate/) >= 0.8.7 : To pretty-print song list
+- [python3](https://www.python.org/) >= 3.12 : Use python3 interpreter
+- [requests](https://pypi.org/project/requests/) >= 2.32.3 : To download [khinsider](http://downloads.khinsider.com/) hosted files
+- [progressbar2](https://pypi.org/project/progressbar2/) >= 4.4.2 : To display a progress bar for each download
+- [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) >= 4.12.3 : To scrape [khinsider](http://downloads.khinsider.com/) content
+- [tabulate](https://pypi.org/project/tabulate/) >= 0.9.0 : To pretty-print tracklist
 
 ## Usage
 
@@ -30,8 +30,8 @@ Available options:
 - Choose download format (MP3, FLAC, OGG, ...) (-f, --format)
 - Set inactivity timeout in seconds (-t, --timeout)
 - Set chunk size in bytes for covers/songs download (--chunk)
-- Choose start index in the album song list (--start)
-- Choose end index in the album song list (--end)
+- Choose start index in the album tracklist (--start)
+- Choose end index in the album tracklist (--end)
 - Download covers (-c, --covers)
 - Enable verbose mode (-v, --verbose)
 
@@ -45,7 +45,7 @@ album = KHAlbum(url)
 album.get_name()
 album.get_available_formats()
 album.get_covers() # List of KHCover objects
-album.get_songlist() # List of KHSong objects
+album.get_tracklist() # List of KHSong objects
 
 # Print album informations
 album.print()

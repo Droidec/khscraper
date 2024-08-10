@@ -2,6 +2,14 @@
 
 This CHANGELOG indicates the different versions of the `khscrapper` tool.
 
+## Version 2.2.0
+
+- Downloads are now independent of the host used by KHinsider for covers and songs
+- Adapt source code to HTML changes
+- Remove OrderedDict usage (dictionaries are ordered by default as of python 3.7)
+- Bump to python 3.12
+- Revize docstrings
+
 ## Version 2.1.3
 
 - Adapt source code to HTML changes
